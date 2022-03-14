@@ -32,6 +32,8 @@ public:
   bool use_grammar;
   bool FP;
 
+  decision_proceduret::resultt solve(const problemt &problem);
+
 protected:
   // number of synth constraints used so far
   std::size_t number_synth_constraints;
@@ -39,7 +41,6 @@ protected:
   std::size_t synth_constraint_increment;
   std::string build_query(const problemt &problem);
   decision_proceduret::resultt read_result(std::istream &in, const problemt &p);
-  decision_proceduret::resultt solve(const problemt &problem);
   solutiont last_solution;
   message_handlert &message_handler;
 };

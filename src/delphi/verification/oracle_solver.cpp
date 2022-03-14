@@ -2,6 +2,7 @@
 
 #include "oracle_response_parser.h"
 #include "../expr2sygus.h"
+#include "delphi/synthesis/cvc4_synth.h"
 
 #include <util/expr.h>
 #include <util/format_expr.h>
@@ -14,8 +15,10 @@
 
 oracle_solvert::oracle_solvert(
   decision_proceduret &__sub_solver,
+//  synthesizert &__oracle_repr_synthesizer,
   message_handlert &__message_handler) :
   sub_solver(__sub_solver),
+//  oracle_repr_synthesizer(__oracle_repr_synthesizer),
   log(__message_handler)
 {
 }
@@ -262,6 +265,76 @@ oracle_solvert::check_resultt oracle_solvert::check_oracle(
   return INCONSISTENT;
 }
 
+void oracle_solvert::synth_oracle_representations() {
+    console_message_handlert message_handler;
+    messaget message(message_handler);
+    cvc4_syntht synthesizer(message_handler, true, false, true, false);
+
+    for (const auto &history : oracle_call_history) {
+        if (history.second.size() < 3) {
+            continue;
+        }
+
+        problemt repr_problem;
+
+        irep_idt repr_name = history.first + "_repr";
+        for (const auto &funmappair : *oracle_fun_map) {
+            if (funmappair.second.binary_name == history.first) {
+                const auto &oracle_fun = funmappair.second;
+                const size_t num_params = oracle_fun.type.domain().size();
+
+                std::vector<irep_idt> repr_params;
+                if (num_params == 1) {
+                    repr_params.push_back("x#0");
+                } else if (num_params == 2) {
+                    repr_params.push_back("x#0");
+                    repr_params.push_back("y#1");
+                }
+                typet repr_ret_type = oracle_fun.type.codomain();
+
+                synth_functiont repr_funt(oracle_fun.type);
+                repr_funt.parameters = repr_params;
+                repr_problem.synthesis_functions.insert(std::make_pair(repr_name, repr_funt));
+
+                std::cout << "[ORACLE REPR] COMPOSING PROBLEM" << std::endl;
+                for (const auto &call : history.second) {
+
+                    symbol_exprt repr_func_symbol = symbol_exprt(repr_name, oracle_fun.type);
+                    function_application_exprt repr_func_appl = function_application_exprt(repr_func_symbol, call.first);
+                    exprt repr_ex_equality = equal_exprt(repr_func_appl, call.second);
+                    repr_problem.synthesis_constraints.insert(repr_ex_equality);
+                }
+
+                std::cout << "[ORACLE REPR] SOLVING" << std::endl;
+                decision_proceduret::resultt result = synthesizer.solve(repr_problem);
+                switch (result)
+                {
+                    case decision_proceduret::resultt::D_SATISFIABLE:
+                        std::cout << "[ORACLE REPR] CANDIDATE FOUND:" << std::endl;
+                        for (const auto &sol : synthesizer.get_solution().functions) {
+                            std::cout << "lhs: " << expr2sygus(sol.first) << std::endl;
+                            std::cout << "rhs: " << expr2sygus(sol.second) << std::endl;
+
+                            // should only be one function
+                            oracle_representations[history.first] = sol.second;
+                        }
+                        break;
+
+                    case decision_proceduret::resultt::D_UNSATISFIABLE:
+                        std::cout << "[ORACLE REPR] UNSAT:" << std::endl;
+                        break;
+
+                    case decision_proceduret::resultt::D_ERROR:
+                    default:
+                        std::cout << "[ORACLE REPR] ERROR:" << std::endl;
+                        break;
+                }
+
+            }
+        }
+    }
+
+}
 
 
 decision_proceduret::resultt oracle_solvert::dec_solve()
@@ -272,6 +345,7 @@ decision_proceduret::resultt oracle_solvert::dec_solve()
 
   while(true)
   {
+      synth_oracle_representations();
     switch(sub_solver())
     {
     case resultt::D_SATISFIABLE:

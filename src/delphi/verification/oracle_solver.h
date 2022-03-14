@@ -10,6 +10,8 @@
 #include <delphi/oracle_constraint_gen.h>
 
 #include <unordered_set>
+#include <util/cout_message.h>
+#include "delphi/synthesis/synthesizer.h"
 
 class oracle_solvert : public decision_proceduret
 {
@@ -22,6 +24,7 @@ public:
 
   oracle_solvert(
     decision_proceduret &sub_solver,
+//    synthesizert &oracle_repr_synthesizer,
     message_handlert &);
 
   // overloads
@@ -36,12 +39,18 @@ public:
     return number_of_solver_calls;
   }
 
-
   using oracle_historyt = std::map<std::vector<exprt>, exprt>;
   std::unordered_map<std::string, oracle_historyt> oracle_call_history;
+
+  std::unordered_map<std::string, exprt> oracle_representations;
+
   exprt get_oracle_value(const function_application_exprt &oracle_app);
   // make call to oracle with single return
   exprt make_oracle_call(const std::string &binary_name, const std::vector<std::string> &argv);
+
+  std::unordered_map<std::string, solutiont> representations;
+  std::unordered_map<std::string, problemt> oracle_problem_cache;
+  void synth_oracle_representations();
 
   struct applicationt
   {
@@ -56,6 +65,7 @@ protected:
   resultt dec_solve() override;
 
   decision_proceduret &sub_solver;
+//  synthesizert &oracle_repr_synthesizer;
   messaget log;
   std::size_t number_of_solver_calls = 0;
   std::size_t handle_counter = 0;
@@ -65,8 +75,6 @@ protected:
   check_resultt check_oracle(const function_application_exprt &, const applicationt &);
   exprt call_oracle(const applicationt &application, const std::vector<exprt> &inputs);
   exprt call_oracle(const applicationt &application, const std::vector<exprt> &inputs, bool &isnew);
-
-
 };
 
 #endif // CPROVER_FASTSYNTH_ORACLE_SOLVER_H
