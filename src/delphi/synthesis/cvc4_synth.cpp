@@ -191,6 +191,8 @@ std::string cvc4_syntht::build_query(const problemt &problem)
     count++;  
   }
   query +="(check-synth)\n";
+  std::cout << "\n\nQUERY:~~~~~" << std::endl;
+  std::cout << query << std::endl;
   return query;
 }
 
