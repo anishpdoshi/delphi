@@ -13,6 +13,8 @@
 #include <sstream>
 #include <iostream>
 
+#include <solvers/smt2/smt2_dec.h>
+
 oracle_solvert::oracle_solvert(
   decision_proceduret &__sub_solver,
 //  synthesizert &__oracle_repr_synthesizer,
@@ -271,9 +273,9 @@ void oracle_solvert::synth_oracle_representations() {
     cvc4_syntht synthesizer(message_handler, true, false, true, false);
 
     for (const auto &history : oracle_call_history) {
-        if (history.second.size() < 3) {
-            continue;
-        }
+        /* if (history.second.size() < 3) { */
+        /*     continue; */
+        /* } */
 
         problemt repr_problem;
 
@@ -284,12 +286,14 @@ void oracle_solvert::synth_oracle_representations() {
                 const size_t num_params = oracle_fun.type.domain().size();
 
                 std::vector<irep_idt> repr_params;
-                if (num_params == 1) {
-                    repr_params.push_back("x#0");
-                } else if (num_params == 2) {
-                    repr_params.push_back("x#0");
-                    repr_params.push_back("y#1");
-                }
+                for (size_t i = 0; i < num_params; ++i)
+                    repr_params.push_back("p" + integer2string(i) + "#" + integer2string(i));
+                /* if (num_params == 1) { */
+                /*     repr_params.push_back("x#0"); */
+                /* } else if (num_params == 2) { */
+                /*     repr_params.push_back("x#0"); */
+                /*     repr_params.push_back("y#1"); */
+                /* } */
                 typet repr_ret_type = oracle_fun.type.codomain();
 
                 synth_functiont repr_funt(oracle_fun.type);
@@ -336,6 +340,29 @@ void oracle_solvert::synth_oracle_representations() {
 
 }
 
+void oracle_solvert::substitute_oracles() {
+  std::unordered_map<std::string, std::string> name2funcdefinition;
+  for (const auto& funmappair : *oracle_fun_map) {
+    const std::string& smt2_identifier = id2string(funmappair.first);
+    const std::string& binary_name = funmappair.second.binary_name;
+    const auto& func_type = funmappair.second.type;
+    // make sure oracle exists
+    /* assert(oracle_representations.find(binary_name) != oracle_representations.end()); */
+    if (oracle_representations.find(binary_name) == oracle_representations.end()) continue;
+    std::string new_fun = "(define-fun |" + smt2_identifier + "| (";
+    // input arguments
+    for (size_t i = 0; i < func_type.domain().size(); ++i) 
+      new_fun += "(p" + integer2string(i) + " " + type2sygus(func_type.domain()[i]) + ") ";
+    // output argument
+    new_fun += ") " + type2sygus(func_type.codomain()) + " ";
+    // function body
+    new_fun += expr2sygus(oracle_representations[binary_name]) + ")\n";
+
+    name2funcdefinition[smt2_identifier] = new_fun;
+  }
+  smt2_dect * cast_solver = dynamic_cast<smt2_dect *>(&sub_solver);
+  cast_solver->substitute_oracles(name2funcdefinition);
+}
 
 decision_proceduret::resultt oracle_solvert::dec_solve()
 {
@@ -346,6 +373,11 @@ decision_proceduret::resultt oracle_solvert::dec_solve()
   while(true)
   {
       synth_oracle_representations();
+      substitute_oracles();
+    /* std::cout << "ORACLES: " << &oracle_representations << '\n'; */
+    /* std::cout << "is_empty: " << oracle_representations.empty() << '\n'; */
+    /* for (auto& name : oracle_representations) */
+    /*     std::cout << name.first << '\n'; */
     switch(sub_solver())
     {
     case resultt::D_SATISFIABLE:

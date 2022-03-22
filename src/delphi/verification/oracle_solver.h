@@ -51,6 +51,7 @@ public:
   std::unordered_map<std::string, solutiont> representations;
   std::unordered_map<std::string, problemt> oracle_problem_cache;
   void synth_oracle_representations();
+  void substitute_oracles();
 
   struct applicationt
   {
