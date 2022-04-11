@@ -7,14 +7,16 @@ from sklearn.preprocessing import StandardScaler
 
 
 if __name__ == '__main__':
-    df = pd.read_csv('result.csv')
+    df = pd.read_csv('logics_samples.csv')
     X = df.iloc[:,1:8].values
-    X_scaled = StandardScaler().fit_transform(X)
+    p = StandardScaler()
+    X_scaled = p.fit_transform(X)
 
-    y = df['dragForce'].values
 
-    est = SymbolicRegressor()
-    print(est.fit(X_scaled, y))
-    y_pred = est.predict(X_scaled)
+    # y = df['dragForce'].values
 
-    print(est._program)
+    # est = SymbolicRegressor()
+    # print(est.fit(X_scaled, y))
+    # y_pred = est.predict(X_scaled)
+
+    # print(est._program)

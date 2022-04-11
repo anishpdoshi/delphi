@@ -42,24 +42,24 @@ def createDataset(csv_file):
     return Dataset(X, y)
 
 if __name__ == '__main__':
-
-    if not os.path.exists('logics_nn.pt'):
-        net.load_state_dict(torch.load('logics_nn.pt'))
+    logics_net = net()
+    if os.path.exists('logics_nn.pt'):
+        logics_net.load_state_dict(torch.load('logics_nn.pt'))
     else:
-        dataset = createDataset('result.csv')
+        dataset = createDataset('logics_samples.csv')
         trainloader = torch.utils.data.DataLoader(dataset, batch_size=10, shuffle=True, num_workers=1)
 
         epochs = 50
         criterion = nn.MSELoss()
         # create your optimizer
-        optimizer = optim.Adam(net.parameters(), lr=0.001)
+        optimizer = optim.Adam(logics_net.parameters(), lr=0.001)
         for i in range(epochs):
             l = 0
             for input, target in trainloader:
 
                 # in your training loop:
                 optimizer.zero_grad()   # zero the gradient buffers
-                output = net(input)
+                output = logics_net(input)
                 loss = criterion(output, target)
                 loss.backward()
                 optimizer.step()    # Does the update
@@ -68,4 +68,4 @@ if __name__ == '__main__':
                 # print(loss.item())
             print(f'Epoch {i} loss: {l/50}')
         
-        torch.save(net.state_dict(), 'logics_nn.pt')
+        torch.save(logics_net.state_dict(), 'logics_nn.pt')
