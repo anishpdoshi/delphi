@@ -1,4 +1,5 @@
 
+import os
 import torch
 from train_logics import net
 from nn_to_smt import layers_to_smt
@@ -9,7 +10,8 @@ SS_STD = [864.40737069, 467.49305073, 461.33622201, 864.5522074 ,
 
 if __name__ == '__main__':
     logics_net = net()
-    logics_net.load_state_dict(torch.load('logics_nn.pt'))
+    pretrained_path = os.path.abspath(os.path.join(__file__, '..', 'logics_nn.pt'))
+    logics_net.load_state_dict(torch.load(pretrained_path))
     input_vars = [
         f'(/ (- p{i} {SS_MEAN[i]}) {SS_STD[i]})'
         for i in range(7)

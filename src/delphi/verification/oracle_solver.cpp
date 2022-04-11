@@ -391,7 +391,7 @@ void oracle_solvert::synth_neural_oracle_representations() {
                 std::cout << "[ORACLE REPR] SOLVING" << std::endl;
                 std::vector<std::string> argv;
                 std::string stdin_filename;
-                argv = {"python", "/Users/apdoshi/smto-python/run_logics_nn.py", temp_file_problem()};
+                argv = {"python", "/Users/apdoshi/syn-delphi/representation/run_logics_nn.py", temp_file_problem()};
 
                 int res =
                         run(argv[0], argv, stdin_filename, temp_file_stdout(), temp_file_stderr());
@@ -425,7 +425,7 @@ void oracle_solvert::substitute_oracles() {
     const auto& func_type = funmappair.second.type;
     // make sure oracle exists
     /* assert(oracle_representations.find(binary_name) != oracle_representations.end()); */
-    if (oracle_representations_raw.find(binary_name) == oracle_representations_raw.end()) continue;
+    if (oracle_representations.find(binary_name) == oracle_representations.end()) continue;
     std::string new_fun = "(define-fun |" + smt2_identifier + "| (";
     // input arguments
     for (size_t i = 0; i < func_type.domain().size(); ++i) 
@@ -433,9 +433,10 @@ void oracle_solvert::substitute_oracles() {
     // output argument
     new_fun += ") " + type2sygus(func_type.codomain()) + " ";
     // function body
-    new_fun += oracle_representations_raw[binary_name] + ")\n";
-    std::cout << "\n\nGEN REPR" << std::endl;
-    std::cout << new_fun << std::endl;
+//    new_fun += oracle_representations_raw[binary_name] + ")\n";
+      new_fun += expr2sygus(oracle_representations[binary_name]) + ")\n";
+//    std::cout << "\n\nGEN REPR" << std::endl;
+//    std::cout << new_fun << std::endl;
     name2funcdefinition[smt2_identifier] = new_fun;
   }
   smt2_dect * cast_solver = dynamic_cast<smt2_dect *>(&sub_solver);
@@ -450,7 +451,8 @@ decision_proceduret::resultt oracle_solvert::dec_solve()
 
   while(true)
   {
-      synth_neural_oracle_representations();
+      synth_oracle_representations();
+//      synth_neural_oracle_representations();
       substitute_oracles();
     /* std::cout << "ORACLES: " << &oracle_representations << '\n'; */
     /* std::cout << "is_empty: " << oracle_representations.empty() << '\n'; */
