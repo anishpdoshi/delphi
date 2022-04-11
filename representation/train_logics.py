@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from sklearn.preprocessing import StandardScaler
-from nn_to_smt import layers_to_smt_recur2
 
 import pandas as pd
 
