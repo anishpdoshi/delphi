@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include <solvers/smt2/smt2_dec.h>
+#include <util/tempfile.h>
 
 oracle_solvert::oracle_solvert(
   decision_proceduret &__sub_solver,
@@ -301,12 +302,20 @@ void oracle_solvert::synth_oracle_representations() {
                 repr_problem.synthesis_functions.insert(std::make_pair(repr_name, repr_funt));
 
                 std::cout << "[ORACLE REPR] COMPOSING PROBLEM" << std::endl;
+                std::stringstream params_formatted;
                 for (const auto &call : history.second) {
 
                     symbol_exprt repr_func_symbol = symbol_exprt(repr_name, oracle_fun.type);
                     function_application_exprt repr_func_appl = function_application_exprt(repr_func_symbol, call.first);
                     exprt repr_ex_equality = equal_exprt(repr_func_appl, call.second);
                     repr_problem.synthesis_constraints.insert(repr_ex_equality);
+
+                    for (const auto &call_arg : call.first) {
+                        params_formatted << expr2sygus(call_arg) << ",";
+                    }
+                    params_formatted << " | ";
+                    params_formatted << expr2sygus(call.second);
+                    params_formatted << "\n";
                 }
 
                 std::cout << "[ORACLE REPR] SOLVING" << std::endl;
@@ -340,6 +349,74 @@ void oracle_solvert::synth_oracle_representations() {
 
 }
 
+void oracle_solvert::synth_neural_oracle_representations() {
+    console_message_handlert message_handler;
+    messaget message(message_handler);
+
+    for (const auto &history : oracle_call_history) {
+        /* if (history.second.size() < 3) { */
+        /*     continue; */
+        /* } */
+        for (const auto &funmappair : *oracle_fun_map) {
+            if (funmappair.second.binary_name == history.first) {
+                const auto &oracle_fun = funmappair.second;
+                const size_t num_params = oracle_fun.type.domain().size();
+
+                std::vector<irep_idt> repr_params;
+                for (size_t i = 0; i < num_params; ++i)
+                    repr_params.push_back("p" + integer2string(i) + "#" + integer2string(i));
+                typet repr_ret_type = oracle_fun.type.codomain();
+
+                std::cout << "[ORACLE REPR] COMPOSING PROBLEM" << std::endl;
+                std::stringstream params_formatted;
+                for (const auto &call : history.second) {
+                    for (const auto &call_arg : call.first) {
+                        params_formatted << expr2sygus(call_arg) << ",";
+                    }
+                    params_formatted << " | ";
+                    params_formatted << expr2sygus(call.second);
+                    params_formatted << "\n";
+                }
+
+                temporary_filet
+                        temp_file_problem("nn_problem_", ""),
+                        temp_file_stdout("nn_stdout_", ""),
+                        temp_file_stderr("nn_stderr_", "");
+                {
+                    std::ofstream problem_out(
+                            temp_file_problem(), std::ios_base::out | std::ios_base::trunc);
+                    problem_out << params_formatted.str();
+                }
+
+                std::cout << "[ORACLE REPR] SOLVING" << std::endl;
+                std::vector<std::string> argv;
+                std::string stdin_filename;
+                argv = {"python", "/Users/apdoshi/smto-python/run_logics_nn.py", temp_file_problem()};
+
+                int res =
+                        run(argv[0], argv, stdin_filename, temp_file_stdout(), temp_file_stderr());
+
+                if (res < 0) {
+                    std::cout << "[ORACLE REPR] ERROR:" << std::endl;
+                    break;
+                } else
+                {
+                    std::ifstream in(temp_file_stdout());
+                    std::stringstream buffer;
+                    buffer << in.rdbuf();
+                    std::string result = buffer.str();
+                    std::cout << "[ORACLE REPR] RES:" << std::endl;
+                    std::cout << result << std::endl;
+                    if (result != "unsat") {
+                        oracle_representations_raw[history.first] = result;
+                    }
+                }
+            }
+        }
+    }
+
+}
+
 void oracle_solvert::substitute_oracles() {
   std::unordered_map<std::string, std::string> name2funcdefinition;
   for (const auto& funmappair : *oracle_fun_map) {
@@ -348,7 +425,7 @@ void oracle_solvert::substitute_oracles() {
     const auto& func_type = funmappair.second.type;
     // make sure oracle exists
     /* assert(oracle_representations.find(binary_name) != oracle_representations.end()); */
-    if (oracle_representations.find(binary_name) == oracle_representations.end()) continue;
+    if (oracle_representations_raw.find(binary_name) == oracle_representations_raw.end()) continue;
     std::string new_fun = "(define-fun |" + smt2_identifier + "| (";
     // input arguments
     for (size_t i = 0; i < func_type.domain().size(); ++i) 
@@ -356,8 +433,9 @@ void oracle_solvert::substitute_oracles() {
     // output argument
     new_fun += ") " + type2sygus(func_type.codomain()) + " ";
     // function body
-    new_fun += expr2sygus(oracle_representations[binary_name]) + ")\n";
-
+    new_fun += oracle_representations_raw[binary_name] + ")\n";
+    std::cout << "\n\nGEN REPR" << std::endl;
+    std::cout << new_fun << std::endl;
     name2funcdefinition[smt2_identifier] = new_fun;
   }
   smt2_dect * cast_solver = dynamic_cast<smt2_dect *>(&sub_solver);
@@ -372,7 +450,7 @@ decision_proceduret::resultt oracle_solvert::dec_solve()
 
   while(true)
   {
-      synth_oracle_representations();
+      synth_neural_oracle_representations();
       substitute_oracles();
     /* std::cout << "ORACLES: " << &oracle_representations << '\n'; */
     /* std::cout << "is_empty: " << oracle_representations.empty() << '\n'; */

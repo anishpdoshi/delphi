@@ -43,6 +43,7 @@ public:
   std::unordered_map<std::string, oracle_historyt> oracle_call_history;
 
   std::unordered_map<std::string, exprt> oracle_representations;
+  std::unordered_map<std::string, std::string> oracle_representations_raw;
 
   exprt get_oracle_value(const function_application_exprt &oracle_app);
   // make call to oracle with single return
@@ -51,6 +52,7 @@ public:
   std::unordered_map<std::string, solutiont> representations;
   std::unordered_map<std::string, problemt> oracle_problem_cache;
   void synth_oracle_representations();
+  void synth_neural_oracle_representations();
   void substitute_oracles();
 
   struct applicationt
