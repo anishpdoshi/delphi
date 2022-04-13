@@ -18,6 +18,7 @@ public:
   negation_oracle_solvert(
     decision_proceduret &sub_solver,
     decision_proceduret &negation_sub_solver,
+    repr_syntht __repr_type,
     message_handlert &);
 
   void set_to(const exprt &expr, bool value) override;

@@ -14,7 +14,7 @@ if __name__ == '__main__':
     logics_net.load_state_dict(torch.load(pretrained_path))
     input_vars = [
         f'(/ (- p{i} {SS_MEAN[i]}) {SS_STD[i]})'
-        for i in range(7)
+        for i in range(logics_net[0].in_features)
     ]
 
     smt_func = layers_to_smt(logics_net, input_vars)

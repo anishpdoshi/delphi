@@ -17,14 +17,25 @@ class oracle_solvert : public decision_proceduret
 {
 public:
   using oracle_funt = smt2_parsert::oracle_funt;
-  using oracle_fun_mapt = smt2_parsert::oracle_fun_mapt; 
+  using oracle_fun_mapt = smt2_parsert::oracle_fun_mapt;
   bool cache=true;
 
   const oracle_fun_mapt *oracle_fun_map = nullptr;
 
+  /// Type of oracle representation to synthesize or learn
+  enum repr_syntht
+    {
+        NO_REPR,
+        SYGUS_REPR,
+        NEURAL_REPR,
+        DT_REPR,
+        SYMB_REGRESSION_REPR
+    };
+
+
   oracle_solvert(
     decision_proceduret &sub_solver,
-//    synthesizert &oracle_repr_synthesizer,
+    repr_syntht repr_type,
     message_handlert &);
 
   // overloads
@@ -42,8 +53,7 @@ public:
   using oracle_historyt = std::map<std::vector<exprt>, exprt>;
   std::unordered_map<std::string, oracle_historyt> oracle_call_history;
 
-  std::unordered_map<std::string, exprt> oracle_representations;
-  std::unordered_map<std::string, std::string> oracle_representations_raw;
+  std::unordered_map<std::string, std::string> oracle_representations;
 
   exprt get_oracle_value(const function_application_exprt &oracle_app);
   // make call to oracle with single return
@@ -52,7 +62,7 @@ public:
   std::unordered_map<std::string, solutiont> representations;
   std::unordered_map<std::string, problemt> oracle_problem_cache;
   void synth_oracle_representations();
-  void synth_neural_oracle_representations();
+  void learn_oracle_representations();
   void substitute_oracles();
 
   struct applicationt
@@ -68,7 +78,7 @@ protected:
   resultt dec_solve() override;
 
   decision_proceduret &sub_solver;
-//  synthesizert &oracle_repr_synthesizer;
+  repr_syntht oracle_repr_type;
   messaget log;
   std::size_t number_of_solver_calls = 0;
   std::size_t handle_counter = 0;

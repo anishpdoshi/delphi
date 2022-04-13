@@ -18,10 +18,10 @@
 
 oracle_solvert::oracle_solvert(
   decision_proceduret &__sub_solver,
-//  synthesizert &__oracle_repr_synthesizer,
+  repr_syntht __repr_type,
   message_handlert &__message_handler) :
   sub_solver(__sub_solver),
-//  oracle_repr_synthesizer(__oracle_repr_synthesizer),
+  oracle_repr_type(__repr_type),
   log(__message_handler)
 {
 }
@@ -288,13 +288,8 @@ void oracle_solvert::synth_oracle_representations() {
 
                 std::vector<irep_idt> repr_params;
                 for (size_t i = 0; i < num_params; ++i)
-                    repr_params.push_back("p" + integer2string(i) + "#" + integer2string(i));
-                /* if (num_params == 1) { */
-                /*     repr_params.push_back("x#0"); */
-                /* } else if (num_params == 2) { */
-                /*     repr_params.push_back("x#0"); */
-                /*     repr_params.push_back("y#1"); */
-                /* } */
+                    repr_params.emplace_back("p" + integer2string(i) + "#" + integer2string(i));
+
                 typet repr_ret_type = oracle_fun.type.codomain();
 
                 synth_functiont repr_funt(oracle_fun.type);
@@ -329,7 +324,7 @@ void oracle_solvert::synth_oracle_representations() {
                             std::cout << "rhs: " << expr2sygus(sol.second) << std::endl;
 
                             // should only be one function
-                            oracle_representations[history.first] = sol.second;
+                            oracle_representations[history.first] = expr2sygus(sol.second);
                         }
                         break;
 
@@ -349,7 +344,7 @@ void oracle_solvert::synth_oracle_representations() {
 
 }
 
-void oracle_solvert::synth_neural_oracle_representations() {
+void oracle_solvert::learn_oracle_representations() {
     console_message_handlert message_handler;
     messaget message(message_handler);
 
@@ -367,7 +362,6 @@ void oracle_solvert::synth_neural_oracle_representations() {
                     repr_params.push_back("p" + integer2string(i) + "#" + integer2string(i));
                 typet repr_ret_type = oracle_fun.type.codomain();
 
-                std::cout << "[ORACLE REPR] COMPOSING PROBLEM" << std::endl;
                 std::stringstream params_formatted;
                 for (const auto &call : history.second) {
                     for (const auto &call_arg : call.first) {
@@ -388,10 +382,13 @@ void oracle_solvert::synth_neural_oracle_representations() {
                     problem_out << params_formatted.str();
                 }
 
-                std::cout << "[ORACLE REPR] SOLVING" << std::endl;
+
                 std::vector<std::string> argv;
                 std::string stdin_filename;
+
                 argv = {"python", "/Users/apdoshi/syn-delphi/representation/run_logics_nn.py", temp_file_problem()};
+
+                std::cout << "[ORACLE REPR] RUNNING: " << argv[0] << " " << argv[1] << " " << argv[2] << std::endl;
 
                 int res =
                         run(argv[0], argv, stdin_filename, temp_file_stdout(), temp_file_stderr());
@@ -407,8 +404,8 @@ void oracle_solvert::synth_neural_oracle_representations() {
                     std::string result = buffer.str();
                     std::cout << "[ORACLE REPR] RES:" << std::endl;
                     std::cout << result << std::endl;
-                    if (result != "unsat") {
-                        oracle_representations_raw[history.first] = result;
+                    if (!result.empty()) {
+                        oracle_representations[history.first] = result;
                     }
                 }
             }
@@ -423,20 +420,20 @@ void oracle_solvert::substitute_oracles() {
     const std::string& smt2_identifier = id2string(funmappair.first);
     const std::string& binary_name = funmappair.second.binary_name;
     const auto& func_type = funmappair.second.type;
+
     // make sure oracle exists
-    /* assert(oracle_representations.find(binary_name) != oracle_representations.end()); */
     if (oracle_representations.find(binary_name) == oracle_representations.end()) continue;
+
     std::string new_fun = "(define-fun |" + smt2_identifier + "| (";
     // input arguments
     for (size_t i = 0; i < func_type.domain().size(); ++i) 
       new_fun += "(p" + integer2string(i) + " " + type2sygus(func_type.domain()[i]) + ") ";
+
     // output argument
     new_fun += ") " + type2sygus(func_type.codomain()) + " ";
+
     // function body
-//    new_fun += oracle_representations_raw[binary_name] + ")\n";
-      new_fun += expr2sygus(oracle_representations[binary_name]) + ")\n";
-//    std::cout << "\n\nGEN REPR" << std::endl;
-//    std::cout << new_fun << std::endl;
+    new_fun += oracle_representations[binary_name] + ")\n";
     name2funcdefinition[smt2_identifier] = new_fun;
   }
   smt2_dect * cast_solver = dynamic_cast<smt2_dect *>(&sub_solver);
@@ -451,13 +448,16 @@ decision_proceduret::resultt oracle_solvert::dec_solve()
 
   while(true)
   {
-      synth_oracle_representations();
-//      synth_neural_oracle_representations();
-      substitute_oracles();
-    /* std::cout << "ORACLES: " << &oracle_representations << '\n'; */
-    /* std::cout << "is_empty: " << oracle_representations.empty() << '\n'; */
-    /* for (auto& name : oracle_representations) */
-    /*     std::cout << name.first << '\n'; */
+      if (oracle_repr_type != NO_REPR) {
+          if (oracle_repr_type == SYGUS_REPR) {
+              // TODO maybe move sygus/calling cvc5 to Python as well
+              synth_oracle_representations();
+          } else {
+              learn_oracle_representations();
+          }
+          substitute_oracles();
+      }
+
     switch(sub_solver())
     {
     case resultt::D_SATISFIABLE:

@@ -14,6 +14,7 @@
   "(verbosity): "                                                         \
   "(smt) "                                                                \
   "(bitblast) "                                                           \
+  "(oracle-repr): "                                                       \
   "(symbolic-bitblast)"                                                   \
   "(symbolic-synth)"                                                      \
   "(simplify) "                                                           \
@@ -58,7 +59,8 @@ void help(std::ostream &out)
      "  Oracle SMTO subsolver:         default uses CVC4\n"
      " --bitblast                      use bitblasting solver as oracle solver subsolver\n"
      " --simplify                      enables simplifcation in bitblasting solver\n"
-     " --negation-solver               enables solving algorithm that searches for negation of model\n\n"
+     " --negation-solver               enables solving algorithm that searches for negation of model\n"
+     " --oracle-repr                   oracle representation synthesizer. one of \"sygus\", \"neural\", \"dt\", \"symb_regr\"\n\n"
      "  Synthesis solver               default uses CVC4\n"
      " --fp                            enables floating points of arbitrary size\n"
      " --pbe                           enables PBE mode in CVC4 (not recommended unless using a grammar)\n"

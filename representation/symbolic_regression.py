@@ -5,7 +5,7 @@ import gplearn
 from gplearn.genetic import SymbolicRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import max_error, mean_squared_error
+from sklearn.metrics import max_error, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
 
 if __name__ == '__main__':
@@ -24,7 +24,7 @@ if __name__ == '__main__':
         population_size=2000,
         generations=20,
         tournament_size=20,
-        function_set=('add', 'sub', 'mul', 'div', 'max', 'min', 'abs', 'neg'),
+        function_set=('add', 'sub', 'mul'),
         metric='mse',
         n_jobs=-1
     )
@@ -35,6 +35,12 @@ if __name__ == '__main__':
     print()
     print(f'Train mean squared error: {mean_squared_error(y_train_pred, y_train)}')
     print(f'Pred mean squared error: {mean_squared_error(y_pred, y_test)}')
+    print()
+    print(f'Train mean absolute error: {mean_absolute_error(y_train_pred, y_train)}')
+    print(f'Pred mean absolute error: {mean_absolute_error(y_pred, y_test)}')
+    print()
+    print(f'Train mape error: {mean_absolute_percentage_error(y_train_pred, y_train)}')
+    print(f'Pred mape error: {mean_absolute_percentage_error(y_pred, y_test)}')
     print()
     print(f'Train max error: {max_error(y_train_pred, y_train)}')
     print(f'Pred max error: {max_error(y_pred, y_test)}')

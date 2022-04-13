@@ -6,3 +6,6 @@
 src/emu/emu
 
 src/delphi/delphi
+
+representation/__pycache__/
+src/.idea/

@@ -15,8 +15,9 @@
 negation_oracle_solvert::negation_oracle_solvert(
     decision_proceduret &__sub_solver,
     decision_proceduret &__negation_sub_solver,
-  message_handlert &__message_handler) :
-  oracle_solvert(__sub_solver, __message_handler),
+    repr_syntht __repr_type,
+    message_handlert &__message_handler) :
+  oracle_solvert(__sub_solver, __repr_type, __message_handler),
     negation_sub_solver(__negation_sub_solver),
     try_positive_model(false)
 {

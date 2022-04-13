@@ -7,7 +7,7 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import max_error, mean_squared_error
+from sklearn.metrics import max_error, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
 # from autoPyTorch.api.tabular_regression import TabularRegressionTask
 
@@ -115,6 +115,12 @@ if __name__ == '__main__':
     
     print(f'Train mean squared error: {mean_squared_error(y_train_preds, y_train)}')
     print(f'Pred mean squared error: {mean_squared_error(y_test_preds, y_test)}')
+
+    print(f'Train mean absolute error: {mean_absolute_error(y_train_preds, y_train)}')
+    print(f'Pred mean absolute error: {mean_absolute_error(y_test_preds, y_test)}')
+
+    print(f'Train mape error: {mean_absolute_percentage_error(y_train_preds, y_train)}')
+    print(f'Pred mape error: {mean_absolute_percentage_error(y_test_preds, y_test)}')
 
     print(f'Train max error: {max_error(y_train_preds, y_train)}')
     print(f'Pred max error: {max_error(y_test_preds, y_test)}')
