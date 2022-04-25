@@ -445,22 +445,28 @@ decision_proceduret::resultt oracle_solvert::dec_solve()
   PRECONDITION(oracle_fun_map != nullptr);
 
   number_of_solver_calls++;
+  bool last_use_synth = oracle_repr_type != NO_REPR;
+  bool unsat = false;
 
   while(true)
   {
       if (oracle_repr_type != NO_REPR) {
-          if (oracle_repr_type == SYGUS_REPR) {
-              // TODO maybe move sygus/calling cvc5 to Python as well
-              synth_oracle_representations();
-          } else {
-              learn_oracle_representations();
-          }
-          substitute_oracles();
+          if (!unsat) {
+              if (oracle_repr_type == SYGUS_REPR) {
+                  // TODO maybe move sygus/calling cvc5 to Python as well
+                  synth_oracle_representations();
+              } else {
+                  learn_oracle_representations();
+              }
+              substitute_oracles();
+              last_use_synth = true;
+          } else last_use_synth = false;
       }
 
     switch(sub_solver())
     {
     case resultt::D_SATISFIABLE:
+      unsat = false;
       switch(check_oracles())
       {
       case INCONSISTENT:
@@ -475,6 +481,10 @@ decision_proceduret::resultt oracle_solvert::dec_solve()
       break;
 
     case resultt::D_UNSATISFIABLE:
+      if (last_use_synth) {
+          unsat = true; 
+          break;
+      }
       return resultt::D_UNSATISFIABLE;
 
     case resultt::D_ERROR:
