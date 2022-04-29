@@ -15,8 +15,9 @@ class oracle_interfacet : public verifyt
 {
  public:
   oracle_interfacet(namespacet &_namespace, 
-                message_handlert &_ms, bool _bitblast) :
+                message_handlert &_ms, oracle_solvert::repr_syntht _repr_type, bool _bitblast) :
                 bitblast(_bitblast),
+                repr_type(_repr_type),
                 ns(_namespace),
                 log(_ms){};
 
@@ -35,6 +36,7 @@ class oracle_interfacet : public verifyt
 
   protected:
   bool bitblast;
+  oracle_solvert::repr_syntht repr_type;
 
   namespacet ns;
   messaget log;

@@ -130,11 +130,21 @@ int sygus_frontend(const cmdlinet &cmdline, std::istream &in)
   symbol_tablet symbol_table;
   namespacet ns(symbol_table);
 
+  oracle_solvert::repr_syntht oracle_repr_type = oracle_solvert::repr_syntht::NO_REPR;
+  if (cmdline.get_value("oracle-repr") == "sygus") {
+      oracle_repr_type = oracle_solvert::repr_syntht::SYGUS_REPR;
+  } else if (cmdline.get_value("oracle-repr") == "neural") {
+      oracle_repr_type = oracle_solvert::repr_syntht::NEURAL_REPR;
+  } else if (cmdline.get_value("oracle-repr") == "dt") {
+      oracle_repr_type = oracle_solvert::repr_syntht::DT_REPR;
+  } else if (cmdline.get_value("oracle-repr") == "symb_regr") {
+      oracle_repr_type = oracle_solvert::repr_syntht::SYMB_REGRESSION_REPR;
+  }
 
   if(!cmdline.isset("symbolic-synth"))
   {
     cvc4_syntht synthesizer(message_handler, cmdline.isset("constants"), cmdline.isset("pbe"), cmdline.isset("grammar"), cmdline.isset("fp"));  
-    oracle_interfacet verifier(ns, message_handler, cmdline.isset("bitblast"));
+    oracle_interfacet verifier(ns, message_handler, oracle_repr_type, cmdline.isset("bitblast"));
     ogist ogis(synthesizer, verifier, problem, ns);
     ogis.increase_program_size=false;
     ogis.doit();
@@ -142,7 +152,7 @@ int sygus_frontend(const cmdlinet &cmdline, std::istream &in)
   else
   {
     simple_syntht synthesizer(ns, message_handler, cmdline.isset("symbolic-bitblast"));
-    oracle_interfacet verifier(ns, message_handler, cmdline.isset("bitblast"));
+    oracle_interfacet verifier(ns, message_handler, oracle_repr_type, cmdline.isset("bitblast"));
     ogist ogis(synthesizer, verifier, problem, ns);
     ogis.doit();
   }
