@@ -27,7 +27,7 @@ class Dataset(torch.utils.data.Dataset):
   def __getitem__(self, i):
       return self.X[i], self.y[i]
 
-def net():
+def create_nn():
     return nn.Sequential(
         nn.Linear(7, 50),
         nn.ReLU(),
@@ -41,12 +41,12 @@ def preds_from(model, dataloader):
         preds.extend(model(inp).flatten().tolist())
     return np.array(preds)
 
-def train_model(model, train_dataloader):
+def train_model(model, train_dataloader, lr=0.001):
 
     epochs = 100
     criterion = nn.MSELoss()
     # create your optimizer
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer)
     for i in range(epochs):
         l = 0
@@ -63,6 +63,29 @@ def train_model(model, train_dataloader):
         scheduler.step(l)
     
     return model
+
+# learn_representation
+# neural.py
+# basething.py
+# symbolic_regression.py
+
+
+# need to be able to run this from command line
+# frontend when passed --neural
+#     goes to neural runner
+#     create net (with or w/o quantization)?
+#     if --pretrained is passed in
+#         load net from file
+#     given example, 
+#         learn from that example
+#         print(nn_to_smt(example))
+
+# when passed --symb or --dt
+#     either 
+#         take in csv path, and run adhoc pretraining then
+#     take in --logics flag, and load 
+
+
 
 if __name__ == '__main__':
     
@@ -83,22 +106,22 @@ if __name__ == '__main__':
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=1)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=10, shuffle=False, num_workers=1)
 
-    logics_net = net()
+    model = create_nn()
     if os.path.exists('logics_nn.pt'):
         print('logics_nn.pt exists, loading from there and not training')
-        logics_net.load_state_dict(torch.load('logics_nn.pt'))
+        model.load_state_dict(torch.load('logics_nn.pt'))
     else:
         epochs = 100
         criterion = nn.MSELoss()
         # create your optimizer
-        optimizer = optim.Adam(logics_net.parameters(), lr=0.001)
+        optimizer = optim.Adam(model.parameters(), lr=0.001)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer)
         for i in range(epochs):
             l = 0
             for input, target in train_loader:
                 # in your training loop:
                 optimizer.zero_grad()   # zero the gradient buffers
-                output = logics_net(input)
+                output = model(input)
                 loss = criterion(output, target)
                 loss.backward()
                 optimizer.step()    # Does the update
@@ -107,13 +130,13 @@ if __name__ == '__main__':
             print(f'Epoch {i} loss: {l/50}')
             scheduler.step(l)
         
-        torch.save(logics_net.state_dict(), 'logics_nn.pt')
+        torch.save(model.state_dict(), 'logics_nn.pt')
     
-    logics_net.eval()
+    model.eval()
     
     with torch.no_grad():
-        y_train_preds = preds_from(logics_net, train_loader)
-        y_test_preds = preds_from(logics_net, test_loader)
+        y_train_preds = preds_from(model, train_loader)
+        y_test_preds = preds_from(model, test_loader)
     
     print(f'Train mean squared error: {mean_squared_error(y_train_preds, y_train)}')
     print(f'Pred mean squared error: {mean_squared_error(y_test_preds, y_test)}')
