@@ -9,8 +9,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import max_error, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
-# from autoPyTorch.api.tabular_regression import TabularRegressionTask
-
 import pandas as pd
 
 class Dataset(torch.utils.data.Dataset):
@@ -43,6 +41,29 @@ def preds_from(model, dataloader):
         preds.extend(model(inp).flatten().tolist())
     return np.array(preds)
 
+def train_model(model, train_dataloader):
+
+    epochs = 100
+    criterion = nn.MSELoss()
+    # create your optimizer
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer)
+    for i in range(epochs):
+        l = 0
+        for input, target in train_loader:
+            # in your training loop:
+            optimizer.zero_grad()   # zero the gradient buffers
+            output = model(input)
+            loss = criterion(output, target)
+            loss.backward()
+            optimizer.step()    # Does the update
+            l += loss.item()
+            # print(loss.item())
+        print(f'Epoch {i} loss: {l/50}')
+        scheduler.step(l)
+    
+    return model
+
 if __name__ == '__main__':
     
     
@@ -61,25 +82,6 @@ if __name__ == '__main__':
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=1)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=10, shuffle=False, num_workers=1)
-
-    # # initialise Auto-PyTorch api
-    # api = TabularRegressionTask()
-
-    # # Search for an ensemble of machine learning algorithms
-    # api.search(
-    #     X_train=X_train,
-    #     y_train=y_train,
-    #     X_test=X_test,
-    #     y_test=y_test,
-    #     optimize_metric='mean_squared_error',
-    #     total_walltime_limit=300,
-    #     func_eval_time_limit_secs=50
-    # )
-
-    # # Calculate test accuracy
-    # y_pred = api.predict(X_test)
-    # score = api.score(y_pred, y_test)
-    # print("Accuracy score", score)
 
     logics_net = net()
     if os.path.exists('logics_nn.pt'):
