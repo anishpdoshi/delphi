@@ -64,6 +64,10 @@ def layers_to_smt(layers, inputs):
     
     return layers_to_smt(layers[1:], layer_results)
 
+# def quant_layers_to_smt(qlayers, inputs):
+    
+
+
 def with_equality_to(layers, inputs):
     model = nn.Sequential(*layers)
     model_output = model(torch.tensor(inputs)).item()

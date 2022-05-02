@@ -12,6 +12,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <fstream>
 
 #include <solvers/smt2/smt2_dec.h>
 #include <util/tempfile.h>
@@ -350,9 +351,9 @@ void oracle_solvert::learn_oracle_representations() {
     messaget message(message_handler);
 
     for (const auto &history : oracle_call_history) {
-        /* if (history.second.size() < 3) { */
-        /*     continue; */
-        /* } */
+        if (history.second.size() < 10) {
+            continue;
+        }
         for (const auto &funmappair : *oracle_fun_map) {
             if (funmappair.second.binary_name == history.first) {
                 const auto &oracle_fun = funmappair.second;
@@ -368,9 +369,9 @@ void oracle_solvert::learn_oracle_representations() {
                     for (const auto &call_arg : call.first) {
                         params_formatted << expr2sygus(call_arg) << ",";
                     }
-                    params_formatted << " | ";
+                    params_formatted << " -> ";
                     params_formatted << expr2sygus(call.second);
-                    params_formatted << "\n";
+                    params_formatted << " | ";
                 }
 
                 temporary_filet
@@ -383,27 +384,78 @@ void oracle_solvert::learn_oracle_representations() {
                     problem_out << params_formatted.str();
                 }
 
+                std::stringstream oracle_interface_rep;
+                oracle_interface_rep << "(";
+                for (const auto &param_type : oracle_fun.type.domain()) {
+                    oracle_interface_rep << type2sygus(param_type) << ",";
+                }
+                oracle_interface_rep << ") -> ";
+                oracle_interface_rep << type2sygus(oracle_fun.type.codomain());
 
                 std::vector<std::string> argv;
-                std::string stdin_filename;
 
-                argv = {"python", "/Users/apdoshi/syn-delphi/representation/run_logics_nn.py", temp_file_problem()};
+                std::string repr_type_string;
+                if (oracle_repr_type == NEURAL_REPR) {
+                    repr_type_string = "neural";
+                } else if (oracle_repr_type == SYMB_REGRESSION_REPR) {
+                    repr_type_string = "symb_regr";
+                } else if (oracle_repr_type == DT_REPR) {
+                    repr_type_string = "dt";
+                }
 
-                std::cout << "[ORACLE REPR] RUNNING: " << argv[0] << " " << argv[1] << " " << argv[2] << std::endl;
+                argv = {
+                        "python",
+                        "/Users/apdoshi/syn-delphi/representation/frontend.py",
+                        "--examples",
+                        "\"" + params_formatted.str() + "\"",
+                        "--interface",
+                        "\"" + oracle_interface_rep.str() + "\"",
+                        "--type",
+                        repr_type_string,
+                };
 
-                int res =
-                        run(argv[0], argv, stdin_filename, temp_file_stdout(), temp_file_stderr());
+                std::cout << "[ORACLE REPR] RUNNING: ";
+                for (const auto &argstr : argv) {
+                    std::cout << argstr << " ";
+                }
+                std::cout << std::endl;
 
-                if (res < 0) {
+
+                int res = run(
+                        argv[0],
+                        argv,
+                        temp_file_problem(),
+                        temp_file_stdout(),
+                        temp_file_stderr());
+
+                std::ifstream error_in(temp_file_stderr());
+                std::stringstream error_buffer;
+                error_buffer << error_in.rdbuf();
+                if (res < 0 || !error_buffer.str().empty()) {
                     std::cout << "[ORACLE REPR] ERROR:" << std::endl;
+                    std::cout << error_buffer.str() << std::endl;
                     break;
                 } else
                 {
+                    std::cout << "[ORACLE REPR] OK:" << std::endl;
                     std::ifstream in(temp_file_stdout());
                     std::stringstream buffer;
                     buffer << in.rdbuf();
+                    // Find just the SMT part
                     std::string result = buffer.str();
-                    std::cout << "[ORACLE REPR] RES:" << std::endl;
+                    std::vector<std::string> tokens;
+
+
+                    std::string token;
+                    while (std::getline(buffer, token, '\n')) {
+                        tokens.push_back(token);
+                    }
+
+                    if (!tokens.empty()) {
+                        result = tokens.back();
+                    }
+
+                    std::cout << "[ORACLE REPR] SMT:" << std::endl;
                     std::cout << result << std::endl;
                     if (!result.empty()) {
                         oracle_representations[history.first] = result;
