@@ -198,7 +198,8 @@ exprt oracle_solvert::call_oracle(
     for (const auto &input : inputs)
     {
       std::ostringstream stream;
-      stream << format(input);
+      /* stream << format(input); */
+      stream << to_constant_expr(input).get_value();
       argv.push_back(stream.str());
     }
 

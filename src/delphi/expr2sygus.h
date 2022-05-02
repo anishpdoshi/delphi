@@ -27,6 +27,7 @@ std::string expr2sygus_var_dec(const symbol_exprt &symbol);
   std::string convert_typecast(const typecast_exprt &expr);
   std::string convert_floatbv_typecast(const floatbv_typecast_exprt &expr);
   std::string convert_constant(const constant_exprt &expr);
+  std::string get_constant(const exprt &expr);
   std::string convert_relation(const binary_relation_exprt &);
   std::string convert_plus(const plus_exprt &expr);
   std::string convert_minus(const minus_exprt &expr);

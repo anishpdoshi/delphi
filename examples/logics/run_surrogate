@@ -1,0 +1,2 @@
+#!/bin/sh
+python3 /Users/pwchen/code/delphi/representation/infer.py $1 $2 $3 $4 $5 $6 $7

@@ -115,6 +115,54 @@ std::string convert_constant(const constant_exprt &expr)
   return result;
 }
 
+std::string get_constant(const exprt &expr)
+{
+  assert(expr.id() == ID_constant);
+
+  constant_exprt constant_expr = to_constant_expr(expr);
+  std::string result;
+  const typet &expr_type=expr.type();
+
+  if(expr_type.id()==ID_unsignedbv ||
+     expr_type.id()==ID_signedbv ||
+     expr_type.id()==ID_bv) {
+    std::size_t width;
+    if(expr_type.id()==ID_signedbv)
+      width = to_signedbv_type(expr_type).get_width();
+    else if(expr_type.id()==ID_unsignedbv)
+      width = to_unsignedbv_type(expr_type).get_width();
+    else
+      width = to_bv_type(expr_type).get_width();
+
+    const mp_integer value = bvrep2integer(constant_expr.get_value(), width, false);
+
+    result = integer2string(value);
+  }
+  else if(expr_type.id()==ID_integer ||
+          expr_type.id()==ID_real) {
+    std::string value = id2string(constant_expr.get_value());
+    auto pos = value.find('-');
+    result = ((pos!=std::string::npos)? "-":"") + value;
+  }
+  else if(expr_type.id()==ID_rational)
+  {
+    std::string value=id2string(constant_expr.get_value());
+    size_t pos=value.find("/");
+
+    if(pos==std::string::npos)
+      result = value + ".0";
+    else
+    {
+      float nom = std::atof(value.substr(0, pos).c_str());
+      float denom = std::atof(value.substr(pos+1).c_str());
+      result = std::to_string(nom/denom);
+    }
+  }
+
+  /* if (result == "") std::cout << expr_type.id() << '\n'; */
+
+  return result;
+}
 
 std::string convert_expr(const exprt &expr)
 {
