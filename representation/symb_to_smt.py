@@ -1,5 +1,4 @@
 from collections import namedtuple
-from cvc5.pythonic import BitVec, Int, Real, Bool
 
 Node = namedtuple("Node", ["value", "children"])
 CONST = 'POS'
@@ -23,16 +22,16 @@ def parse_symb_program(prog, ops, var_names):
     return eval(prog, parse_vars)
 
 
-def output_val(value, sort):
-    if str(sort).startswith('BitVec'):
+def output_val(value, itype):
+    if itype.is_bv_type():
         if value > 0:
-            return f'(_ bv{value} {sort.size()})'
+            return f'(_ bv{value} {itype.width})'
         else:
-            return f'(bvneg (_ bv{-value} {sort.size()}))'
+            return f'(bvneg (_ bv{-value} {itype.width}))'
     else:
         return str(value)
 
-def output_smt(parsed, rewrite_dictionary, variable_names, sort):
+def output_smt(parsed, rewrite_dictionary, variable_names, itype):
     
     def output_recur(node):
         if not node:
@@ -42,14 +41,14 @@ def output_smt(parsed, rewrite_dictionary, variable_names, sort):
             if node.value in variable_names:
                 return node.value
             elif node.value.startswith(CONSTNEG):
-                return output_val(-1 * int(node.value.split(CONSTNEG)[1]), sort)
+                return output_val(-1 * int(node.value.split(CONSTNEG)[1]), itype)
             elif node.value.startswith(CONST):
-                return output_val(int(node.value.split(CONST)[1]), sort)
+                return output_val(int(node.value.split(CONST)[1]), itype)
             else:
                 subterms = ' '.join([output_recur(child) for child in node.children])
                 return f'({rewrite_dictionary.get(node.value, node.value)} {subterms})'
         else:
-            return output_val(node, sort)
+            return output_val(node, itype)
     
     return output_recur(parsed)
 

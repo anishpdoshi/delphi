@@ -20,8 +20,13 @@ class BaseLearner(object):
 
     def evaluate(self, examples, metrics, print_results=True):
         inputs = [example[0] for example in examples]
-        outputs = [example[1] for example in examples]
+        outputs = np.array([example[1] for example in examples])
         preds = np.array(self.run(inputs))
+        
+        if preds.dtype == np.bool:
+            preds = preds.astype(int)
+            outputs = outputs.astype(int)
+
         results = {}
         for metric in metrics:
             results[metric.__name__] = metric(preds, outputs)

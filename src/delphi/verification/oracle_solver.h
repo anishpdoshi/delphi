@@ -32,11 +32,18 @@ public:
         SYMB_REGRESSION_REPR
     };
 
+  struct oracle_repr_optionst {
+      repr_syntht repr_type;
+      int frequency;
+      bool true_false_prediction;
+      std::string smtfilepath;
+  };
 
   oracle_solvert(
-    decision_proceduret &sub_solver,
-    repr_syntht repr_type,
-    message_handlert &);
+          decision_proceduret &sub_solver,
+          oracle_repr_optionst repr_options,
+          message_handlert &);
+
 
   // overloads
   void set_to(const exprt &expr, bool value) override;
@@ -78,7 +85,7 @@ protected:
   resultt dec_solve() override;
 
   decision_proceduret &sub_solver;
-  repr_syntht oracle_repr_type;
+  oracle_repr_optionst repr_options;
   messaget log;
   std::size_t number_of_solver_calls = 0;
   std::size_t handle_counter = 0;

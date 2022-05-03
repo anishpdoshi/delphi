@@ -10,16 +10,25 @@ from cvc5.pythonic import BitVec, Bool, Int, Real
 
 import utils
 from symbolic_regression import SymbolicLearner
+from decision_tree import DecisionTreeLearner
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Learn representation given input/output examples')
     parser.add_argument('--examples', type=str, help='Stringified input/output oracle assumptions.')
     parser.add_argument('--interface', type=str, help='Oracle interface')
     parser.add_argument('--type', choices=['dt', 'symb_regr', 'neural'], help='The type of representation to learn.')
+    parser.add_argument('--binary', action='store_true', help='If set, learn a binary classifier that checks whether the oracle _satisfies_ its enclosing constraints')
+    parser.add_argument('--smtfile', type=str, help='Path to SMT file, required for binary')
+    parser.add_argument('--oraclefn', type=str, help='Name of oracle function, required for binary')
     parser.add_argument('--pretrained', type=str, default=None, help='If given, the prefix of the pretrained file')
     # parser.add_argument('--logics', action='store_true', help='Whether or not to use pretrained LOGiCs models')
     # parser.add_argument('--sort', choices=['bv', 'int'], help='The types of logics to support')
     args = parser.parse_args()
+
+    if args.interface:
+        interface = utils.parse_interface(args.interface)
+    if args.examples:
+        examples = utils.parse_examples_str(args.examples, interface)
 
     if args.type == 'neural':
         # just print the logics net as SMT for now
@@ -38,23 +47,19 @@ if __name__ == '__main__':
         exit(0)
 
     elif args.type == 'dt':
+        assert args.binary, "DT not implemented for non binary problem"
         learner = DecisionTreeLearner(interface)
     elif args.type == 'symb_regr':
-        if args.interface:
-            interface = utils.parse_interface(args.interface)
-        if args.examples:
-            examples = utils.parse_examples_str(args.examples, interface)
         learner = SymbolicLearner(interface)
     else:
-        if args.interface:
-            interface = utils.parse_interface(args.interface)
-        if args.examples:
-            examples = utils.parse_examples_str(args.examples, interface)
         learner = SymbolicLearner(interface)
 
     if args.pretrained is not None:
         learner.load(args.pretrained)
     
+    if args.binary:
+        examples = utils.binarize(examples, args.smtfile, interface, oracle_fn_name=args.oraclefn)
+
     learner.train(examples)
 
     print('--------SMT----------')

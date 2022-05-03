@@ -141,10 +141,25 @@ int sygus_frontend(const cmdlinet &cmdline, std::istream &in)
       oracle_repr_type = oracle_solvert::repr_syntht::SYMB_REGRESSION_REPR;
   }
 
+  oracle_solvert::oracle_repr_optionst repr_options;
+  repr_options.repr_type = oracle_repr_type;
+  if (cmdline.isset("oracle-repr-freq")) {
+      repr_options.frequency = std::stoi(cmdline.get_value("oracle-repr-freq"));
+  } else {
+      repr_options.frequency = 1;
+  }
+  if(cmdline.args.size() == 1) {
+      repr_options.smtfilepath = cmdline.args.back();
+  }
+
+  if (oracle_repr_type == oracle_solvert::repr_syntht::DT_REPR) {
+      repr_options.true_false_prediction = true;
+  }
+
   if(!cmdline.isset("symbolic-synth"))
   {
     cvc4_syntht synthesizer(message_handler, cmdline.isset("constants"), cmdline.isset("pbe"), cmdline.isset("grammar"), cmdline.isset("fp"));  
-    oracle_interfacet verifier(ns, message_handler, oracle_repr_type, cmdline.isset("bitblast"));
+    oracle_interfacet verifier(ns, message_handler, repr_options, cmdline.isset("bitblast"));
     ogist ogis(synthesizer, verifier, problem, ns);
     ogis.increase_program_size=false;
     ogis.doit();
@@ -152,7 +167,7 @@ int sygus_frontend(const cmdlinet &cmdline, std::istream &in)
   else
   {
     simple_syntht synthesizer(ns, message_handler, cmdline.isset("symbolic-bitblast"));
-    oracle_interfacet verifier(ns, message_handler, oracle_repr_type, cmdline.isset("bitblast"));
+    oracle_interfacet verifier(ns, message_handler, repr_options, cmdline.isset("bitblast"));
     ogist ogis(synthesizer, verifier, problem, ns);
     ogis.doit();
   }

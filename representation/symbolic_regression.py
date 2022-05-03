@@ -1,6 +1,7 @@
 import json
 import pickle
 import gplearn
+import pysmt
 from collections import namedtuple
 
 import pandas as pd
@@ -13,7 +14,7 @@ from sklearn.metrics import max_error, mean_squared_error, mean_absolute_error, 
 
 from logics_data import load_logics_data
 from base_learner import BaseLearner
-from utils import parse_interface, generate_variables
+from utils import parse_interface, generate_variables, clean_examples
 from symb_to_smt import parse_symb_program, output_smt, CONST, CONSTNEG
 
 SHOULD_WRAP = True
@@ -64,8 +65,8 @@ FUNCTIONS = {
     'mod': make_function(mod, name='mod', arity=2)
 }
 
-def get_rewrite_dict(sort):
-    if str(sort).startswith('BitVec'):
+def get_rewrite_dict(itype):
+    if itype.is_bv_type():
         return {
             'bvnot': 'bvneg',
             'bvshr': 'bvashr',
@@ -96,20 +97,20 @@ def constants_for(int_range):
 
 def functions_for(interface):
     subset = None
-    interface_strs = [str(inp_type.sort()) for inp_type in interface[0]]
-    if all([int_str.startswith('BitVec') for int_str in interface_strs]):
-        subset = ['bvnot', 'bvor', 'bvshl', 'add', 'sub', 'bvshr', 'lt', 'gt']
+    interface_types = [inp_symbol.get_type() for inp_symbol in interface[0]]
+    if all([itype.is_bv_type() for itype in interface_types]):
+        subset = ['bvnot', 'bvor', 'bvshl', 'add', 'sub', 'bvshr']
         # subset = ['sub', 'add']
-    elif any([int_str.startswith('Real') for int_str in interface_strs]):
+    elif any([itype.is_real_type() for itype in interface_types]):
         subset = ['ite', 'is_eq', 'lt', 'gt', 'add', 'sub', 'mul', 'div', 'mod']
-    elif all([int_str.startswith('Int') for int_str in interface_strs]):
+    elif all([itype.is_int_type() for itype in interface_types]):
         subset = ['ite', 'is_eq', 'lt', 'gt', 'add', 'sub', 'mul', 'mod'],
     else:
-        raise ValueError(f'what functions to use for {interface_strs}')
+        raise ValueError(f'what functions to use for {interface}')
     
     functions_for_interface = [FUNCTIONS.get(key, key) for key in subset]
-    if not any([int_str.startswith('Real') for int_str in interface_strs]):
-        functions_for_interface.extend(constants_for(range(-5, 5)))
+    if not any([itype.is_real_type() for itype in interface_types]):
+        functions_for_interface.extend(constants_for(range(9, 11)))
     
     return functions_for_interface
 
@@ -117,8 +118,8 @@ class SymbolicLearner(BaseLearner):
     def __init__(self, interface, use_scaling=False):
         super().__init__(interface)
         
-        interface_strs = [str(inp_type.sort()) for inp_type in interface[0]]
-        supports_reals = any([int_str.startswith('Real') for int_str in interface_strs])
+        interface_types = [inp_symbol.get_type() for inp_symbol in interface[0]]
+        supports_reals = any([itype.is_real_type() for itype in interface_types])
         const_range = (-2.0, 2.0) if supports_reals else None
         self.function_set = tuple(functions_for(interface))
 
@@ -129,7 +130,7 @@ class SymbolicLearner(BaseLearner):
             generations=5,
             tournament_size=100,
             # parsimony_coefficient='auto',
-            init_depth=(2,6),
+            init_depth=(2,3),
             function_set=self.function_set,
             metric='mean absolute error',
             n_jobs=-1,
@@ -139,7 +140,7 @@ class SymbolicLearner(BaseLearner):
         self.standard_scaler = None
 
     def get_paths(self, location):
-        state_path = location + '_symb_regr_state.json'
+        state_path = location + '_symb_regr_state.pkl'
         scaler_path = location + '_scaler.pkl'
         return state_path, scaler_path
 
@@ -157,6 +158,7 @@ class SymbolicLearner(BaseLearner):
         self.estimator.warm_start = True
 
     def train(self, examples, update_pretrained=False, train_args={}):
+        examples = clean_examples(examples)
         X = [example[0] for example in examples]
         y = [example[1] for example in examples]
         X, y = np.array(X), np.array(y)
@@ -193,15 +195,15 @@ class SymbolicLearner(BaseLearner):
         )
         return output_smt(
             parsed,
-            get_rewrite_dict(self.interface[1].sort()),
+            get_rewrite_dict(self.interface[1].get_type()),
             var_names,
-            self.interface[1].sort()
+            self.interface[1].get_type()
         )
 
 
 if __name__ == '__main__':
     
-    interface = parse_interface('((_ BitVec 32),(_ BitVec 32)) -> (_ BitVec 32)')
+    interface = parse_interface('((_ BitVec 32),(_ BitVec 32)) --> (_ BitVec 32)')
     learner = SymbolicLearner(interface)
     examples = []
     import random

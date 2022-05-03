@@ -7,7 +7,7 @@
 
 (declare-oracle-fun add10 add10binary ((_ BitVec 32)) (_ BitVec 32))
 
-(assert (not (= (add10 x) (_ bv20 32))))
+(assert (= (add10 x) (_ bv500 32)))
 (assert (= x (y x)))
 (check-sat)
 (get-model)

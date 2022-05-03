@@ -15,6 +15,7 @@
   "(smt) "                                                                \
   "(bitblast) "                                                           \
   "(oracle-repr): "                                                       \
+  "(oracle-repr-freq): "                                                  \
   "(symbolic-bitblast)"                                                   \
   "(symbolic-synth)"                                                      \
   "(simplify) "                                                           \
@@ -60,7 +61,8 @@ void help(std::ostream &out)
      " --bitblast                      use bitblasting solver as oracle solver subsolver\n"
      " --simplify                      enables simplifcation in bitblasting solver\n"
      " --negation-solver               enables solving algorithm that searches for negation of model\n"
-     " --oracle-repr                   oracle representation synthesizer. one of \"sygus\", \"neural\", \"dt\", \"symb_regr\"\n\n"
+     " --oracle-repr s                 oracle representation synthesizer. one of \"sygus\", \"neural\", \"dt\", \"symb_regr\" (setting to \"dt\" will use true/false prediction) \n"
+     " --oracle-repr-freq N            how often to try synthesizing oracle representations. Default: 1"
      "  Synthesis solver               default uses CVC4\n"
      " --fp                            enables floating points of arbitrary size\n"
      " --pbe                           enables PBE mode in CVC4 (not recommended unless using a grammar)\n"

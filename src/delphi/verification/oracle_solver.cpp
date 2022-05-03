@@ -13,16 +13,17 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
+#include <utility>
 
 #include <solvers/smt2/smt2_dec.h>
 #include <util/tempfile.h>
 
 oracle_solvert::oracle_solvert(
-  decision_proceduret &__sub_solver,
-  repr_syntht __repr_type,
-  message_handlert &__message_handler) :
-  sub_solver(__sub_solver),
-  oracle_repr_type(__repr_type),
+        decision_proceduret &sub_solver,
+        oracle_repr_optionst repr_options,
+        message_handlert &__message_handler) :
+  sub_solver(sub_solver),
+  repr_options(std::move(repr_options)),
   log(__message_handler)
 {
 }
@@ -379,7 +380,7 @@ void oracle_solvert::learn_oracle_representations() {
     messaget message(message_handler);
 
     for (const auto &history : oracle_call_history) {
-        if (history.second.size() < 3) {
+        if (history.second.size() < 3 || (history.second.size() - 3) % repr_options.frequency != 0) {
             continue;
         }
         for (const auto &funmappair : *oracle_fun_map) {
@@ -389,7 +390,7 @@ void oracle_solvert::learn_oracle_representations() {
 
                 std::vector<irep_idt> repr_params;
                 for (size_t i = 0; i < num_params; ++i)
-                    repr_params.push_back("p" + integer2string(i) + "#" + integer2string(i));
+                    repr_params.emplace_back("p" + integer2string(i) + "#" + integer2string(i));
                 typet repr_ret_type = oracle_fun.type.codomain();
 
                 std::stringstream params_formatted;
@@ -414,20 +415,24 @@ void oracle_solvert::learn_oracle_representations() {
 
                 std::stringstream oracle_interface_rep;
                 oracle_interface_rep << "(";
-                for (const auto &param_type : oracle_fun.type.domain()) {
-                    oracle_interface_rep << type2sygus(param_type) << ",";
+                if (!oracle_fun.type.domain().empty()) {
+                    for (const auto &param_type: oracle_fun.type.domain()) {
+                        oracle_interface_rep << type2sygus(param_type) << ",";
+                    }
                 }
-                oracle_interface_rep << ") -> ";
+                oracle_interface_rep << ")";
+                oracle_interface_rep << " --> ";
                 oracle_interface_rep << type2sygus(oracle_fun.type.codomain());
 
                 std::vector<std::string> argv;
 
                 std::string repr_type_string;
-                if (oracle_repr_type == NEURAL_REPR) {
+
+                if (repr_options.repr_type == NEURAL_REPR) {
                     repr_type_string = "neural";
-                } else if (oracle_repr_type == SYMB_REGRESSION_REPR) {
+                } else if (repr_options.repr_type == SYMB_REGRESSION_REPR) {
                     repr_type_string = "symb_regr";
-                } else if (oracle_repr_type == DT_REPR) {
+                } else if (repr_options.repr_type == DT_REPR) {
                     repr_type_string = "dt";
                 }
 
@@ -439,8 +444,16 @@ void oracle_solvert::learn_oracle_representations() {
                         "--interface",
                         "\"" + oracle_interface_rep.str() + "\"",
                         "--type",
-                        repr_type_string,
+                        repr_type_string
                 };
+                if (repr_options.true_false_prediction) {
+                    argv.emplace_back("--binary");
+                    argv.emplace_back("--smtfile");
+                    argv.emplace_back(repr_options.smtfilepath);
+                    argv.emplace_back("--oraclefn");
+                    argv.emplace_back(as_string(funmappair.first));
+                }
+
 
                 std::cout << "[ORACLE REPR] RUNNING: ";
                 for (const auto &argstr : argv) {
@@ -526,14 +539,14 @@ decision_proceduret::resultt oracle_solvert::dec_solve()
   PRECONDITION(oracle_fun_map != nullptr);
 
   number_of_solver_calls++;
-  bool last_use_synth = oracle_repr_type != NO_REPR;
+  bool last_use_synth = repr_options.repr_type != NO_REPR;
   bool unsat = false;
 
   while(true)
   {
-      if (oracle_repr_type != NO_REPR) {
+      if (repr_options.repr_type != NO_REPR) {
           if (!unsat) {
-              if (oracle_repr_type == SYGUS_REPR) {
+              if (repr_options.repr_type == SYGUS_REPR) {
                   // TODO maybe move sygus/calling cvc5 to Python as well
                   synth_oracle_representations();
               } else {
@@ -541,7 +554,10 @@ decision_proceduret::resultt oracle_solvert::dec_solve()
               }
               substitute_oracles();
               last_use_synth = true;
-          } else last_use_synth = false;
+          } else {
+              // Try Backoff/Prune the model if possible
+              last_use_synth = false;
+          }
       }
 
     switch(sub_solver())
