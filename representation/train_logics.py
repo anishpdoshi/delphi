@@ -11,6 +11,8 @@ from sklearn.metrics import max_error, mean_squared_error, mean_absolute_error, 
 
 import pandas as pd
 
+hidden_size = 10
+
 class Dataset(torch.utils.data.Dataset):
 
   def __init__(self, X, y, scale_data=True):
@@ -27,11 +29,11 @@ class Dataset(torch.utils.data.Dataset):
   def __getitem__(self, i):
       return self.X[i], self.y[i]
 
-def create_nn():
+def create_nn(hidden_size):
     return nn.Sequential(
-        nn.Linear(7, 50),
+        nn.Linear(7, hidden_size),
         nn.ReLU(),
-        nn.Linear(50, 1),
+        nn.Linear(hidden_size, 1),
         nn.ReLU(),
     )
 
@@ -106,10 +108,11 @@ if __name__ == '__main__':
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=1)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=10, shuffle=False, num_workers=1)
 
-    model = create_nn()
-    if os.path.exists('logics_nn.pt'):
-        print('logics_nn.pt exists, loading from there and not training')
-        model.load_state_dict(torch.load('logics_nn.pt'))
+    model = create_nn(hidden_size)
+    model_filename = f'logics_nn_{hidden_size}.pt'
+    if os.path.exists(model_filename):
+        print(f'{model_filename} exists, loading from there and not training')
+        model.load_state_dict(torch.load(model_filename))
     else:
         epochs = 100
         criterion = nn.MSELoss()
@@ -130,7 +133,7 @@ if __name__ == '__main__':
             print(f'Epoch {i} loss: {l/50}')
             scheduler.step(l)
         
-        torch.save(model.state_dict(), 'logics_nn.pt')
+        torch.save(model.state_dict(), model_filename)
     
     model.eval()
     

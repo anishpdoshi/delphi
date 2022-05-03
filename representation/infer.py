@@ -6,7 +6,7 @@ import torch.optim as optim
 from sklearn.preprocessing import StandardScaler
 
 import pandas as pd
-from train_logics import create_nn
+from train_logics import *
 import numpy as np
 
 SS_MEAN = [2493.7060225 , 1217.44478049, 1217.61054739, 2429.59505593, 333.79507274, 2491.11564464, 55.26044223]
@@ -21,8 +21,9 @@ if __name__ == '__main__':
     scaler.scale_ = np.array(SS_STD)
     args_scaled = scaler.transform(np.array(args).reshape(1,-1))
     args_scaled = torch.Tensor(args_scaled)
-    model = create_nn()
-    model.load_state_dict(torch.load('logics_nn.pt'))
+    model = create_nn(hidden_size)
+    model_filename = f'logics_nn_{hidden_size}.pt'
+    model.load_state_dict(torch.load(model_filename))
     model.eval()
 
     print(model(args_scaled).item())
