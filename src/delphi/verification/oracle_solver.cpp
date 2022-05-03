@@ -267,6 +267,34 @@ oracle_solvert::check_resultt oracle_solvert::check_oracle(
     sub_solver.set_to_true(implication);        
 
   }
+  { // 1. assumptions: oracle inputs, oracle output
+    //    solve with assumptions
+    /* exprt::operandst equal_constraints; */
+
+    std::string assumption_str = "\n";
+    // add a constraint that enforces this equality
+    auto response_equality = equal_exprt(application.handle, response);
+    assumption_str += "(assert (= |" + expr2sygus(application.handle) + "| " + expr2sygus(response) + "))\n";
+    /* equal_constraints.push_back(response_equality); */
+
+    for (auto &argument_handle : application.argument_handles) {
+      assumption_str += "(assert (= |" + expr2sygus(argument_handle) + "| " + expr2sygus(get(argument_handle)) + "))\n";
+      /* equal_constraints.push_back(equal_exprt(argument_handle, get(argument_handle))); */
+    }
+
+    // 2. solver push assumptions
+    smt2_dect * dec_solver = dynamic_cast<smt2_dect *>(&sub_solver);
+    dec_solver->push_assump_str(assumption_str);
+    
+    switch ((*dec_solver)()) {
+      case resultt::D_SATISFIABLE: return CONSISTENT;
+      case resultt::D_UNSATISFIABLE: break;
+      case resultt::D_ERROR: assert(false);
+    }
+
+    // 3. solver pop
+    dec_solver->pop();
+  }
   return INCONSISTENT;
 }
 
@@ -351,7 +379,7 @@ void oracle_solvert::learn_oracle_representations() {
     messaget message(message_handler);
 
     for (const auto &history : oracle_call_history) {
-        if (history.second.size() < 10) {
+        if (history.second.size() < 3) {
             continue;
         }
         for (const auto &funmappair : *oracle_fun_map) {
