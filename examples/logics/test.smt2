@@ -13,14 +13,14 @@
 (declare-fun payload_z () Int)
 (declare-fun vol () Int)
 (declare-fun payload_vol () Int)
-(declare-fun bat_vol () Int)
-(declare-fun bat_threshold () Int)
+; (declare-fun bat_vol () Int)
+; (declare-fun bat_threshold () Int)
 
 ; CFD oracle
 (declare-oracle-fun cfd run_surrogate (Int Int Int Int Int Int Int) Real)
 (assert (>= 45.0 (cfd length width height noseLength radius tailLength endRadius)))
 ; Volume oracle
-(declare-oracle-fun get_vol get_vol (Int Int Int Int Int Int Int) Int)
+; (declare-oracle-fun get_vol get_vol (Int Int Int Int Int Int Int) Int)
 
 (assert (> length 10))
 (assert (> width 10))
@@ -62,10 +62,10 @@
          ))
 
 ; battery constraint
-(assert (= bat_threshold 100000000))
-(assert (= vol (get_vol length width height noseLength radius tailLength endRadius)))
-(assert (= bat_vol (- vol payload_vol)))
-(assert (>= bat_vol bat_threshold))
+; (assert (= bat_threshold 100000000))
+; (assert (= vol (get_vol length width height noseLength radius tailLength endRadius)))
+; (assert (= bat_vol (- vol payload_vol)))
+; (assert (>= bat_vol bat_threshold))
 
 (check-sat)
 (get-model)
