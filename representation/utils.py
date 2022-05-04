@@ -4,7 +4,7 @@ import pysmt
 import warnings
 
 
-from pysmt.shortcuts import get_env, Int, BV, Real, Bool, Symbol
+from pysmt.shortcuts import get_env, Int, BV, Real, Bool, Symbol, Ite, And, Equals
 from pysmt.typing import BVType, INT, REAL, BOOL
 from pysmt.smtlib.parser import SmtLibParser
 from extract_oracle import convert_oracles_to_funcs
@@ -139,12 +139,38 @@ def clean_examples(examples):
         for example in examples
     ]
 
+def parse_smt(string):
+    return parser.get_script(io.StringIO(f'(assert {string})')).commands[0].args[0]
+
+def wrap_smt_representation_examples(examples, interface, smt_block):
+    if isinstance(smt_block, str):
+        smt_block = parse_smt(smt_block)
+    
+    def wrap_recur(examples):
+        if len(examples) == 0:
+            return smt_block
+        
+        example = examples[0]
+
+        return Ite(
+            And([
+                Equals(input_symb, example_const)
+                for input_symb, example_const in zip(interface[0], example[0])
+            ]),
+            example[1],
+            wrap_recur(examples[1:])
+        )
+
+    return wrap_recur(examples)
+
 if __name__ == '__main__':
     smtfile = '../examples/first_order/simple.smt2'
     interface = parse_interface('(_ BitVec 32), --> (_ BitVec 32)', ['x'])
     examples = parse_examples_str('(_ bv1 32), -> (_ bv11 32) | (_ bv2 32), -> (_ bv12 32)', interface)
     binarized = binarize(examples, smtfile, interface, oracle_fn_name='add10')
     print(binarized)
+
+
     # with open(smtfile, 'r') as f:
     #     smttext = f.read()
     

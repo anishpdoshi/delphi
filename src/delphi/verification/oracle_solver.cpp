@@ -200,8 +200,8 @@ exprt oracle_solvert::call_oracle(
     for (const auto &input : inputs)
     {
       std::ostringstream stream;
-      /* stream << format(input); */
-      stream << to_constant_expr(input).get_value();
+      stream << format(input);
+      // stream << to_constant_expr(input).get_value();
       argv.push_back(stream.str());
     }
 
@@ -444,7 +444,8 @@ void oracle_solvert::learn_oracle_representations() {
                         "--interface",
                         "\"" + oracle_interface_rep.str() + "\"",
                         "--type",
-                        repr_type_string
+                        repr_type_string,
+                        "--wrap_smt"
                 };
                 if (repr_options.true_false_prediction) {
                     argv.emplace_back("--binary");
@@ -522,16 +523,21 @@ void oracle_solvert::substitute_oracles() {
     // input arguments
     for (size_t i = 0; i < func_type.domain().size(); ++i) 
       new_fun += "(p" + integer2string(i) + " " + type2sygus(func_type.domain()[i]) + ") ";
+    new_fun += ") ";
 
     // output argument
-    new_fun += ") " + type2sygus(func_type.codomain()) + " ";
+    if (repr_options.true_false_prediction) {
+        new_fun += "Bool ";
+    } else {
+        new_fun += type2sygus(func_type.codomain()) + " ";
+    }
 
     // function body
     new_fun += oracle_representations[binary_name] + ")\n";
     name2funcdefinition[smt2_identifier] = new_fun;
   }
   smt2_dect * cast_solver = dynamic_cast<smt2_dect *>(&sub_solver);
-  cast_solver->substitute_oracles(name2funcdefinition);
+  cast_solver->substitute_oracles(name2funcdefinition, repr_options.true_false_prediction);
 }
 
 decision_proceduret::resultt oracle_solvert::dec_solve()

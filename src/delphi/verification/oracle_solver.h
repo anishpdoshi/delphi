@@ -37,6 +37,8 @@ public:
       int frequency;
       bool true_false_prediction;
       std::string smtfilepath;
+      std::string pretrained;
+      bool wrap_smt;
   };
 
   oracle_solvert(

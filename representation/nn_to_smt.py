@@ -4,6 +4,8 @@ import itertools
 import torch
 import torch.nn as nn
 ## EAGER MODE
+import pysmt
+import utils
 from torch.quantization import quantize_dynamic
 
 ADD = '+' if len(sys.argv) == 0 or sys.argv[0] != '--bv' else 'bvadd' #+
@@ -64,6 +66,21 @@ def layers_to_smt(layers, inputs):
     
     return layers_to_smt(layers[1:], layer_results)
 
+def wrap(smt_blob, examples, interface):
+    if interface[1].get_type().is_bv_type():
+        magic = pysmt.shortcuts.BV(314, interface[1].get_type().width)
+    else:
+        magic = pysmt.shortcuts.Int(314)
+
+    wrapped = utils.wrap_smt_representation_examples(
+        examples,
+        interface,
+        magic
+    )
+    
+    formula_smt = pysmt.shortcuts.to_smtlib(wrapped, daggify=False)
+    magic_smt = pysmt.shortcuts.to_smtlib(magic, daggify=False)
+    return formula_smt.replace(magic_smt, smt_blob)
 # def quant_layers_to_smt(qlayers, inputs):
     
 

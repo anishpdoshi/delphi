@@ -62,7 +62,7 @@ FUNCTIONS = {
     'lt': make_function(lt, name='lt', arity=2, wrap=SHOULD_WRAP),
     'gt': make_function(lt, name='gt', arity=2, wrap=SHOULD_WRAP),
 
-    'mod': make_function(mod, name='mod', arity=2)
+    'mod': make_function(make_int_caster(mod), name='mod', arity=2)
 }
 
 def get_rewrite_dict(itype):
@@ -76,6 +76,7 @@ def get_rewrite_dict(itype):
             'sub': 'bvsub',
             'mul': 'bvmul',
             'is_eq': '=',
+            'mod': 'bvsmod'
         }
     else:
         return {
@@ -99,7 +100,7 @@ def functions_for(interface):
     subset = None
     interface_types = [inp_symbol.get_type() for inp_symbol in interface[0]]
     if all([itype.is_bv_type() for itype in interface_types]):
-        subset = ['bvnot', 'bvor', 'bvshl', 'add', 'sub', 'bvshr']
+        subset = ['bvand','bvnot', 'bvshl', 'bvshr', 'sub']
         # subset = ['sub', 'add']
     elif any([itype.is_real_type() for itype in interface_types]):
         subset = ['ite', 'is_eq', 'lt', 'gt', 'add', 'sub', 'mul', 'div', 'mod']
@@ -110,7 +111,7 @@ def functions_for(interface):
     
     functions_for_interface = [FUNCTIONS.get(key, key) for key in subset]
     if not any([itype.is_real_type() for itype in interface_types]):
-        functions_for_interface.extend(constants_for(range(9, 11)))
+        functions_for_interface.extend(constants_for(range(-3, 3)))
     
     return functions_for_interface
 
@@ -127,10 +128,10 @@ class SymbolicLearner(BaseLearner):
         self.estimator = SymbolicRegressor(
             const_range=const_range,
             population_size=1000,
-            generations=5,
+            generations=6,
             tournament_size=100,
             # parsimony_coefficient='auto',
-            init_depth=(2,3),
+            init_depth=(2,4),
             function_set=self.function_set,
             metric='mean absolute error',
             n_jobs=-1,

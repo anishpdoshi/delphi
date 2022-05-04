@@ -18,6 +18,16 @@ class BaseLearner(object):
     def run(self, examples):
         pass
 
+    def get_inconsistent_examples(self, examples):
+        inputs = [[ex.constant_value() for ex in example[0]] for example in examples]
+        preds = self.run(inputs)
+        outputs = [example[1].constant_value() for example in examples]
+        return [
+            example
+            for example, pred, output in zip(examples, preds, outputs)
+            if pred != output
+        ]
+
     def evaluate(self, examples, metrics, print_results=True):
         inputs = [example[0] for example in examples]
         outputs = np.array([example[1] for example in examples])
