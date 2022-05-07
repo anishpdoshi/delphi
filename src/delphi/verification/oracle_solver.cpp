@@ -481,10 +481,12 @@ void oracle_solvert::learn_oracle_representations() {
                 {
                     std::cout << "[ORACLE REPR] OK:" << std::endl;
                     std::ifstream in(temp_file_stdout());
+//                    std::cout << in << std::cout;
                     std::stringstream buffer;
                     buffer << in.rdbuf();
                     // Find just the SMT part
                     std::string result = buffer.str();
+                    std::cout << buffer.str() << std::endl;
                     std::vector<std::string> tokens;
 
 

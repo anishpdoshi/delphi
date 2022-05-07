@@ -52,14 +52,23 @@ def main():
             print_blue(f'RUNNING {key}')
             t_zero = time.perf_counter()
             
-            result = subprocess.run(["delphi"] + argslist + [smtfile], capture_output=True, text=True)
-            t_total = time.perf_counter() - t_zero
-            print_blue(f'Finished in {t_total} sec')
-            data[key] = t_total
-            data[f'{key}_out'] = result.stdout
+            try:
+                result = subprocess.run(["delphi"] + argslist + [smtfile], capture_output=True, text=True, timeout=(60 * 10))
+                t_total = time.perf_counter() - t_zero
+                print_blue(f'Finished in {t_total} sec')
+                data[key] = t_total
+                data[f'{key}_out'] = result.stdout
+            except subprocess.TimeoutExpired:
+                print_blue(f'TIMEOUT AFTER 10 min')
+                data[key] = -1
+                data[f'{key}_out'] = ''
 
         with open('results/infos.json', 'w+') as f:
             json.dump(data, f)
 
 if __name__ == '__main__':
     main()
+    # try:
+    #     result = subprocess.run(['delphi', 'Example_4.txt.smt2'], timeout=5, capture_output=True, text=True)
+    # except subprocess.TimeoutExpired:
+    #     print('timeout')

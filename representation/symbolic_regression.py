@@ -100,7 +100,7 @@ def functions_for(interface):
     subset = None
     interface_types = [inp_symbol.get_type() for inp_symbol in interface[0]]
     if all([itype.is_bv_type() for itype in interface_types]):
-        subset = ['bvand','bvnot', 'bvshl', 'bvshr', 'sub']
+        subset = ['bvand', 'sub']
         # subset = ['sub', 'add']
     elif any([itype.is_real_type() for itype in interface_types]):
         subset = ['ite', 'is_eq', 'lt', 'gt', 'add', 'sub', 'mul', 'div', 'mod']
@@ -128,10 +128,9 @@ class SymbolicLearner(BaseLearner):
         self.estimator = SymbolicRegressor(
             const_range=const_range,
             population_size=1000,
-            generations=6,
-            tournament_size=100,
-            # parsimony_coefficient='auto',
-            init_depth=(2,4),
+            generations=4,
+            tournament_size=50,
+            init_depth=(2,3),
             function_set=self.function_set,
             metric='mean absolute error',
             n_jobs=-1,

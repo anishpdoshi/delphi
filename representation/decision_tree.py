@@ -159,10 +159,10 @@ if __name__ == '__main__':
         for example in examples
     ]
 
-    learner.load('logics_500it_93acc')
+    learner.load('logics_100it_68acc')
     learner.evaluate(examples, [metrics.accuracy_score])
     print('---------SMT----------')
     print(learner.to_smt2())
 
-    print('---------SMTWrapped----------')
-    print(learner.to_smt2(wrap_examples=examples_symbolized[:10]))
+    # print('---------SMTWrapped----------')
+    # print(learner.to_smt2(wrap_examples=examples_symbolized[:10]))
