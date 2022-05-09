@@ -299,92 +299,76 @@ oracle_solvert::check_resultt oracle_solvert::check_oracle(
   return INCONSISTENT;
 }
 
-void oracle_solvert::synth_oracle_representations() {
-    console_message_handlert message_handler;
-    messaget message(message_handler);
-    cvc4_syntht synthesizer(message_handler, true, false, true, false);
+void oracle_solvert::synth_oracle_representations(std::string oracle_name, std::map<std::vector<exprt>, exprt> call_history, cvc4_syntht synthesizer) {
+    problemt repr_problem;
+    irep_idt repr_name = oracle_name + "_repr";
+    for (const auto &funmappair : *oracle_fun_map) {
+        if (funmappair.second.binary_name == oracle_name) {
+            const auto &oracle_fun = funmappair.second;
+            const size_t num_params = oracle_fun.type.domain().size();
 
-    for (const auto &history : oracle_call_history) {
-        /* if (history.second.size() < 3) { */
-        /*     continue; */
-        /* } */
+            std::vector<irep_idt> repr_params;
+            for (size_t i = 0; i < num_params; ++i)
+                repr_params.emplace_back("p" + integer2string(i) + "#" + integer2string(i));
 
-        problemt repr_problem;
+            typet repr_ret_type = oracle_fun.type.codomain();
 
-        irep_idt repr_name = history.first + "_repr";
-        for (const auto &funmappair : *oracle_fun_map) {
-            if (funmappair.second.binary_name == history.first) {
-                const auto &oracle_fun = funmappair.second;
-                const size_t num_params = oracle_fun.type.domain().size();
+            synth_functiont repr_funt(oracle_fun.type);
+            repr_funt.parameters = repr_params;
+            repr_problem.synthesis_functions.insert(std::make_pair(repr_name, repr_funt));
 
-                std::vector<irep_idt> repr_params;
-                for (size_t i = 0; i < num_params; ++i)
-                    repr_params.emplace_back("p" + integer2string(i) + "#" + integer2string(i));
+            std::cout << "[ORACLE REPR] COMPOSING PROBLEM" << std::endl;
+            std::stringstream params_formatted;
+            for (const auto &call : call_history) {
 
-                typet repr_ret_type = oracle_fun.type.codomain();
+                symbol_exprt repr_func_symbol = symbol_exprt(repr_name, oracle_fun.type);
+                function_application_exprt repr_func_appl = function_application_exprt(repr_func_symbol, call.first);
+                exprt repr_ex_equality = equal_exprt(repr_func_appl, call.second);
+                repr_problem.synthesis_constraints.insert(repr_ex_equality);
 
-                synth_functiont repr_funt(oracle_fun.type);
-                repr_funt.parameters = repr_params;
-                repr_problem.synthesis_functions.insert(std::make_pair(repr_name, repr_funt));
-
-                std::cout << "[ORACLE REPR] COMPOSING PROBLEM" << std::endl;
-                std::stringstream params_formatted;
-                for (const auto &call : history.second) {
-
-                    symbol_exprt repr_func_symbol = symbol_exprt(repr_name, oracle_fun.type);
-                    function_application_exprt repr_func_appl = function_application_exprt(repr_func_symbol, call.first);
-                    exprt repr_ex_equality = equal_exprt(repr_func_appl, call.second);
-                    repr_problem.synthesis_constraints.insert(repr_ex_equality);
-
-                    for (const auto &call_arg : call.first) {
-                        params_formatted << expr2sygus(call_arg) << ",";
-                    }
-                    params_formatted << " | ";
-                    params_formatted << expr2sygus(call.second);
-                    params_formatted << "\n";
+                for (const auto &call_arg : call.first) {
+                    params_formatted << expr2sygus(call_arg) << ",";
                 }
-
-                std::cout << "[ORACLE REPR] SOLVING" << std::endl;
-                decision_proceduret::resultt result = synthesizer.solve(repr_problem);
-                switch (result)
-                {
-                    case decision_proceduret::resultt::D_SATISFIABLE:
-                        std::cout << "[ORACLE REPR] CANDIDATE FOUND:" << std::endl;
-                        for (const auto &sol : synthesizer.get_solution().functions) {
-                            std::cout << "lhs: " << expr2sygus(sol.first) << std::endl;
-                            std::cout << "rhs: " << expr2sygus(sol.second) << std::endl;
-
-                            // should only be one function
-                            oracle_representations[history.first] = expr2sygus(sol.second);
-                        }
-                        break;
-
-                    case decision_proceduret::resultt::D_UNSATISFIABLE:
-                        std::cout << "[ORACLE REPR] UNSAT:" << std::endl;
-                        break;
-
-                    case decision_proceduret::resultt::D_ERROR:
-                    default:
-                        std::cout << "[ORACLE REPR] ERROR:" << std::endl;
-                        break;
-                }
-
+                params_formatted << " | ";
+                params_formatted << expr2sygus(call.second);
+                params_formatted << "\n";
             }
+
+            std::cout << "[ORACLE REPR] SOLVING" << std::endl;
+            decision_proceduret::resultt result = synthesizer.solve(repr_problem);
+            switch (result)
+            {
+                case decision_proceduret::resultt::D_SATISFIABLE:
+                    std::cout << "[ORACLE REPR] CANDIDATE FOUND:" << std::endl;
+                    for (const auto &sol : synthesizer.get_solution().functions) {
+                        std::cout << "lhs: " << expr2sygus(sol.first) << std::endl;
+                        std::cout << "rhs: " << expr2sygus(sol.second) << std::endl;
+
+                        // should only be one function
+                        oracle_representations[oracle_name] = expr2sygus(sol.second);
+                    }
+                    break;
+
+                case decision_proceduret::resultt::D_UNSATISFIABLE:
+                    std::cout << "[ORACLE REPR] UNSAT:" << std::endl;
+                    break;
+
+                case decision_proceduret::resultt::D_ERROR:
+                default:
+                    std::cout << "[ORACLE REPR] ERROR:" << std::endl;
+                    break;
+            }
+
         }
     }
-
 }
 
-void oracle_solvert::learn_oracle_representations() {
-    console_message_handlert message_handler;
-    messaget message(message_handler);
-
-    for (const auto &history : oracle_call_history) {
-        if (history.second.size() < 3 || (history.second.size() - 3) % repr_options.frequency != 0) {
-            continue;
-        }
-        for (const auto &funmappair : *oracle_fun_map) {
-            if (funmappair.second.binary_name == history.first) {
+void oracle_solvert::learn_oracle_representations(std::string oracle_name, std::map<std::vector<exprt>, exprt> call_history) {
+    if (call_history.size() < 3 || (call_history.size() - 3) % repr_options.frequency != 0) {
+        return;
+    }
+    for (const auto &funmappair : *oracle_fun_map) {
+            if (funmappair.second.binary_name == oracle_name) {
                 const auto &oracle_fun = funmappair.second;
                 const size_t num_params = oracle_fun.type.domain().size();
 
@@ -394,7 +378,7 @@ void oracle_solvert::learn_oracle_representations() {
                 typet repr_ret_type = oracle_fun.type.codomain();
 
                 std::stringstream params_formatted;
-                for (const auto &call : history.second) {
+                for (const auto &call : call_history) {
                     for (const auto &call_arg : call.first) {
                         params_formatted << expr2sygus(call_arg) << ",";
                     }
@@ -430,7 +414,7 @@ void oracle_solvert::learn_oracle_representations() {
 
                 if (repr_options.repr_type == NEURAL_REPR) {
                     repr_type_string = "neural";
-                } else if (repr_options.repr_type == SYMB_REGRESSION_REPR) {
+                } else if (repr_options.repr_type == SYMB_REGRESSION_REPR || repr_options.repr_type == AUTO_REPR) {
                     repr_type_string = "symb_regr";
                 } else if (repr_options.repr_type == DT_REPR) {
                     repr_type_string = "dt";
@@ -502,12 +486,11 @@ void oracle_solvert::learn_oracle_representations() {
                     std::cout << "[ORACLE REPR] SMT:" << std::endl;
                     std::cout << result << std::endl;
                     if (!result.empty()) {
-                        oracle_representations[history.first] = result;
+                        oracle_representations[oracle_name] = result;
                     }
                 }
             }
         }
-    }
 
 }
 
@@ -549,19 +532,24 @@ decision_proceduret::resultt oracle_solvert::dec_solve()
   number_of_solver_calls++;
   bool last_use_synth = repr_options.repr_type != NO_REPR;
   bool unsat = false;
+  console_message_handlert message_handler;
+  messaget message(message_handler);
+  cvc4_syntht synthesizer(message_handler, true, false, true, false);
 
   while(true)
   {
       if (repr_options.repr_type != NO_REPR) {
           if (!unsat) {
-              if (repr_options.repr_type == SYGUS_REPR) {
-                  // TODO maybe move sygus/calling cvc5 to Python as well
-                  synth_oracle_representations();
-              } else {
-                  learn_oracle_representations();
+              for (const auto &history : oracle_call_history) {
+                  if (repr_options.repr_type == SYGUS_REPR || (repr_options.repr_type == AUTO_REPR && history.second.size() <= 3)) {
+                      // TODO maybe move sygus/calling cvc5 to Python as well
+                      synth_oracle_representations(history.first, history.second, synthesizer);
+                  } else {
+                      learn_oracle_representations(history.first, history.second);
+                  }
+                  substitute_oracles();
+                  last_use_synth = true;
               }
-              substitute_oracles();
-              last_use_synth = true;
           } else {
               // Try Backoff/Prune the model if possible
               last_use_synth = false;

@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <util/cout_message.h>
 #include "delphi/synthesis/synthesizer.h"
+#include "delphi/synthesis/cvc4_synth.h"
 
 class oracle_solvert : public decision_proceduret
 {
@@ -29,7 +30,8 @@ public:
         SYGUS_REPR,
         NEURAL_REPR,
         DT_REPR,
-        SYMB_REGRESSION_REPR
+        SYMB_REGRESSION_REPR,
+        AUTO_REPR
     };
 
   struct oracle_repr_optionst {
@@ -70,8 +72,8 @@ public:
 
   std::unordered_map<std::string, solutiont> representations;
   std::unordered_map<std::string, problemt> oracle_problem_cache;
-  void synth_oracle_representations();
-  void learn_oracle_representations();
+  void synth_oracle_representations(std::string oracle_name, std::map<std::vector<exprt>, exprt> call_history, cvc4_syntht synthesizer);
+  void learn_oracle_representations(std::string oracle_name, std::map<std::vector<exprt>, exprt> call_history);
   void substitute_oracles();
 
   struct applicationt

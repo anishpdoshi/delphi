@@ -139,6 +139,8 @@ int sygus_frontend(const cmdlinet &cmdline, std::istream &in)
       oracle_repr_type = oracle_solvert::repr_syntht::DT_REPR;
   } else if (cmdline.get_value("oracle-repr") == "symb_regr") {
       oracle_repr_type = oracle_solvert::repr_syntht::SYMB_REGRESSION_REPR;
+  } else if (cmdline.get_value("oracle-repr") == "auto") {
+      oracle_repr_type = oracle_solvert::repr_syntht::AUTO_REPR;
   }
 
   oracle_solvert::oracle_repr_optionst repr_options;
