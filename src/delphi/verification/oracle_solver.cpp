@@ -3,6 +3,7 @@
 #include "oracle_response_parser.h"
 #include "../expr2sygus.h"
 #include "delphi/synthesis/cvc4_synth.h"
+//#include "symbolic_regression_solver.h"
 
 #include <util/expr.h>
 #include <util/format_expr.h>
@@ -152,6 +153,10 @@ exprt oracle_solvert::make_oracle_call(const std::string &binary_name, const std
   for (auto &arg : argv)
     log.debug() << ' ' << arg;
   log.debug() << messaget::eom;
+
+  number_of_oracle_calls.emplace(binary_name, 0);
+  auto curr_num_calls = number_of_oracle_calls.find(binary_name);
+  curr_num_calls->second++;
 
   // run the oracle binary
   std::ostringstream stdout_stream;
@@ -323,7 +328,20 @@ void oracle_solvert::synth_oracle_representations(std::string oracle_name, std::
 
                 symbol_exprt repr_func_symbol = symbol_exprt(repr_name, oracle_fun.type);
                 function_application_exprt repr_func_appl = function_application_exprt(repr_func_symbol, call.first);
+
                 exprt repr_ex_equality = equal_exprt(repr_func_appl, call.second);
+
+                // Approximate expressions
+//                plus_exprt upper_bound(call.second, constant_exprt(integer2string(5), call.second.type()));
+//                minus_exprt lower_bound(call.second, constant_exprt(integer2string(5), call.second.type()));
+//                binary_predicate_exprt le_upper_exprt(repr_func_appl,ID_le,upper_bound);
+//                binary_predicate_exprt ge_lower_exprt(repr_func_appl,ID_ge,call.second);
+//                std::cout << "[ORACLE REPR] BOUNDS" << std::endl;
+//                std::cout << expr2sygus(le_upper_exprt) << std::endl;
+//                std::cout << expr2sygus(ge_lower_exprt) << std::endl;
+//                repr_problem.synthesis_constraints.insert(le_upper_exprt);
+//                repr_problem.synthesis_constraints.insert(ge_lower_exprt);
+
                 repr_problem.synthesis_constraints.insert(repr_ex_equality);
 
                 for (const auto &call_arg : call.first) {
@@ -529,6 +547,7 @@ decision_proceduret::resultt oracle_solvert::dec_solve()
 {
   PRECONDITION(oracle_fun_map != nullptr);
 
+  int number_of_loops = 0;
   number_of_solver_calls++;
   bool last_use_synth = repr_options.repr_type != NO_REPR;
   bool unsat = false;
@@ -538,6 +557,12 @@ decision_proceduret::resultt oracle_solvert::dec_solve()
 
   while(true)
   {
+      number_of_loops += 1;
+      std::cout << "[ORACLE REPR] Number of Overall Loops: " << number_of_loops << std::endl;
+      std::cout << "[ORACLE REPR] Number of Oracle Calls: " << std::endl;
+      for (const auto &pair : number_of_oracle_calls) {
+          std::cout << "\t" << pair.first << " -> " << pair.second << std::endl;
+      }
       if (repr_options.repr_type != NO_REPR) {
           if (!unsat) {
               for (const auto &history : oracle_call_history) {
@@ -566,9 +591,19 @@ decision_proceduret::resultt oracle_solvert::dec_solve()
         break; // constraint added, we'll do another iteration
 
       case CONSISTENT:
+          std::cout << "[ORACLE REPR] FINAL Number of Overall Loops: " << number_of_loops << std::endl;
+          std::cout << "[ORACLE REPR] FINAL Number of Oracle Calls: " << std::endl;
+              for (const auto &pair : number_of_oracle_calls) {
+                  std::cout << "\t" << pair.first << " -> " << pair.second << std::endl;
+              }
         return resultt::D_SATISFIABLE;
 
       case ERROR:
+          std::cout << "[ORACLE REPR] FINAL Number of Overall Loops: " << number_of_loops << std::endl;
+          std::cout << "[ORACLE REPR] FINAL Number of Oracle Calls: " << std::endl;
+              for (const auto &pair : number_of_oracle_calls) {
+                  std::cout << "\t" << pair.first << " -> " << pair.second << std::endl;
+              }
         return resultt::D_ERROR;
       }
       break;
@@ -578,9 +613,19 @@ decision_proceduret::resultt oracle_solvert::dec_solve()
           unsat = true; 
           break;
       }
+      std::cout << "[ORACLE REPR] FINAL Number of Overall Loops: " << number_of_loops << std::endl;
+      std::cout << "[ORACLE REPR] FINAL Number of Oracle Calls: " << std::endl;
+            for (const auto &pair : number_of_oracle_calls) {
+                std::cout << "\t" << pair.first << " -> " << pair.second << std::endl;
+            }
       return resultt::D_UNSATISFIABLE;
 
     case resultt::D_ERROR:
+        std::cout << "[ORACLE REPR] FINAL Number of Overall Loops: " << number_of_loops << std::endl;
+        std::cout << "[ORACLE REPR] FINAL Number of Oracle Calls: " << std::endl;
+            for (const auto &pair : number_of_oracle_calls) {
+                std::cout << "\t" << pair.first << " -> " << pair.second << std::endl;
+            }
       return resultt::D_ERROR;
     }
   }

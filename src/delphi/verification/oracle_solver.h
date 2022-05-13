@@ -92,7 +92,9 @@ protected:
   oracle_repr_optionst repr_options;
   messaget log;
   std::size_t number_of_solver_calls = 0;
+  std::size_t number_of_overall_calls = 0;
   std::size_t handle_counter = 0;
+  std::unordered_map<std::string, std::size_t> number_of_oracle_calls;
 
   using check_resultt = enum { INCONSISTENT, CONSISTENT, ERROR };
   check_resultt check_oracles();

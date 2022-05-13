@@ -47,7 +47,7 @@ if __name__ == '__main__':
         input_vars = [f'(/ (- p{i} {SS_MEAN[i]}) {SS_STD[i]})' for i in range(logics_net[0].in_features)]
 
         smt_func = layers_to_smt(logics_net, input_vars)
-        if wrap_smt:
+        if args.wrap_smt:
             smt_func = wrap(smt_func, examples, interface)
         print(smt_func)
         os._exit(1)
